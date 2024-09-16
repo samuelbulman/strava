@@ -4,7 +4,7 @@
 This project is a tool to help users programmatically access and store their strava activity data.
 
 ## Pre-requisites
-### Strava Docs
+### Strava/Account Specific
 To learn about Stravas API, creating a Strava App, authenticating with OAuth 2.0, please reference the [Strava Developer Docs](https://developers.strava.com/docs/getting-started/)
 
 ### Storage
