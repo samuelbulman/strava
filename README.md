@@ -1,7 +1,7 @@
 # Want access to your strava activities data? You're in the right repo.
 
 ## Description
-This project is a tool to help users programmatically access and store their strava activity data.
+This project is a tool to help Strava athletes programmatically access and store their personal strava activity data.
 
 ## Pre-requisites
 ### Strava/Account Specific
