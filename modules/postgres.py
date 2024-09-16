@@ -206,7 +206,7 @@ class Postgres:
 
 
     def _connect(self):
-        """Establish a connection to our Redshift db instance."""
+        """Establish a connection to a Postgres db instance."""
         self.conn = psycopg2.connect(
             host = self.db_details["host"],
             port = self.db_details["port"],
