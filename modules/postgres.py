@@ -113,7 +113,7 @@ class Postgres:
             elif pd.api.types.is_bool_dtype(non_null_series) or non_null_series.isin([True, False]).all():
                 column_type = 'BOOLEAN'
 
-            elif len(non_null_series) <= 10 and (pd.api.types.is_integer_dtype(non_null_series) or non_null_series.apply(lambda x: isinstance(x, int)).all()):
+            elif pd.api.types.is_integer_dtype(non_null_series) or non_null_series.apply(lambda x: isinstance(x, int)).all():
                 max_val_len = non_null_series.map(lambda x: len(str(abs(int(x)))) if not pd.isnull(x) else 0).max()
                 if max_val_len > 9:
                     column_type = 'BIGINT'
