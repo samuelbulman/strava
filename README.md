@@ -11,4 +11,4 @@ All calls to the Strava API require an a`ccess_token` that defines the athlete a
 This project was designed to leverage Postgres as a database storage solution. You will ideally have access to a user that has write privilegs in a Postgres db instance. If you do not, please contribute/request a new db module to work with.
 
 ### Packages
-This project leverages a few third party libraries. To prime your local environment, it is recommended to create a virtual environment, activate it, and run the following command: `pip install -r requirements.txt`
+This project leverages a few third party libraries. To prime your local environment _after_ cloning a local copy of this repository, it is recommended to create a virtual environment, activate it, and run the following command: `pip install -r requirements.txt`
