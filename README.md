@@ -5,7 +5,7 @@ This project is a tool to help Strava athletes programmatically access and store
 
 ## Pre-requisites
 ### Strava/Account Specific
-To learn about Stravas API, creating a Strava App, authenticating with OAuth 2.0, please reference the [Strava Developer Docs](https://developers.strava.com/docs/getting-started/)
+All calls to the Strava API require an a`ccess_token` that defines the athlete and application making the API call. Registered Strava athletes can obtain an `access_token` by creating a Strava application [here](https://www.strava.com/settings/api). To learn about Stravas API, creating a Strava App, authenticating with OAuth 2.0, etc. please reference the [Strava Developer Docs](https://developers.strava.com/docs/getting-started/)
 
 ### Storage
 This project was designed to leverage Postgres as a database storage solution. You will ideally have access to a user that has write privilegs in a Postgres db instance. If you do not, please contribute/request a new db module to work with.
