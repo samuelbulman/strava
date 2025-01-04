@@ -1,6 +1,7 @@
 # Standard library imports
 import json
 import os
+from dotenv import load_dotenv
 
 # Third party imports
 import psycopg2
@@ -14,53 +15,57 @@ class Postgres:
     """
 
     def __init__(self):
+        
+        load_dotenv()
 
-        pg_secret_path = "/.secrets/.postgres_secrets.json"
-
-        with open(f"{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}{pg_secret_path}") as secrets:
-            self.db_details = json.load(secrets)
+        self.host = os.getenv('host')
+        self.port = os.getenv('port')
+        self.db_name = os.getenv('db_name')
+        self.user = os.getenv('user')
+        self.password = os.getenv('password')
     
 
-    def query_postgres(self, sql_query, return_df=False) -> tuple:
+    def query_postgres(
+            self,
+            sql_query:str,
+            return_df:bool=False
+        ):
         """
         Executes a `select from where` SQL query against our Redshift db instance
         and returns the resulting column headers and data records as a tuple.
 
         Parameters
         ----------
-            sql_query (str): A SQL query to fetch data from Redshift.
+            - sql_query (str): A SQL query to fetch data from Redshift.
+            - return_df (bool): Returns query results as a dataframe when set to `True`. Default value is `False`.
 
         Returns
         -------
-            tuple: A tuple result set containing column names and data rows.
+            Query result set: The results of the query executed against Postgres.
         """
 
         self._connect()
 
         self._execute(sql_query)
         
-        # Get column names from cursor description and store as a list
         self.columns = [desc[0] for desc in self.cursor.description]
 
-        # Store data returned by query as a list of tuples
         self.data = self.cursor.fetchall()
 
-        # Close connections to redshift
         self._disconnect()
 
         if return_df:
-        # Convert results to a DataFrame
             return pd.DataFrame(data=self.data, columns=self.columns)
     
         else:
-        # Return column names and data    
             return self.columns, self.data
                
         
     def load_dataframe_to_table(
             self,
-            df: pd.DataFrame, 
-            destination_table: str
+            df:pd.DataFrame, 
+            schema:str,
+            table:str
         ):
         """
         This function drops and rebuilds a specified table with data from a given DataFrame.
@@ -74,21 +79,22 @@ class Postgres:
         try:
             self._connect()
 
-            # Check if destination_table exists, if it does, drop it so we can rebuild it
-            self._execute(f"SELECT EXISTS (SELECT schemaname||'.'||tablename FROM pg_tables WHERE schemaname||'.'||tablename = '{destination_table}');")
+            # Check if destination_table exists - if it does, drop it so we can rebuild it
+            self._execute(f"SELECT EXISTS (SELECT tablename FROM pg_tables WHERE schemaname = '{schema}' and tablename = '{table}');")
             table_exists = self.cursor.fetchone()[0]
+
             if table_exists:
-                self._execute(f"DROP TABLE IF EXISTS {destination_table};")
-                print(f"Table '{destination_table}' dropped successfully.")
+                self._execute(f"DROP TABLE IF EXISTS {schema}.{table};")
+                print(f"Table '{schema}.{table}' dropped successfully.")
 
             # Create destination table - potentially revisit this to leverage SHOW TABLE statement to generated CREATE TABLE statement if we know the dataframe structure will not change over time
-            self._execute_create_table_query(df, destination_table)
-            print(f"Table '{destination_table}' created successfully.")
+            self._execute_create_table_query(df, schema, table)
+            print(f"Table '{schema}.{table}' created successfully.")
 
             # Load DataFrame to table and commit transaction
-            self._execute_insert_into_values_query(df, destination_table)
+            self._execute_insert_into_values_query(df, schema, table)
             self._commit()
-            print(f"DataFrame loaded to table '{destination_table}' successfully.")
+            print(f"DataFrame loaded to table '{schema}.{table}' successfully.")
         
         except Exception as e:
             self._rollback()
@@ -98,7 +104,7 @@ class Postgres:
             self._disconnect()
 
     
-    def _execute_create_table_query(self, df, table_name):
+    def _execute_create_table_query(self, df, schema, table):
         from decimal import Decimal
 
         column_definitions = []
@@ -132,13 +138,12 @@ class Postgres:
                 
             column_definitions.append(f"{column} {column_type}")
         
-        create_table_query = f"CREATE TABLE {table_name} ({', '.join(column_definitions)});"
-        print(create_table_query)
+        create_table_query = f"CREATE TABLE {schema}.{table} ({', '.join(column_definitions)});"
         
         self._execute(create_table_query)
     
 
-    def _execute_insert_into_values_query(self, df, destination_table):
+    def _execute_insert_into_values_query(self, df, schema, table):
         from decimal import Decimal
 
         # Get the list of columns
@@ -185,11 +190,9 @@ class Postgres:
 
         # Concatenate the staged rows into a single string
         values = ", ".join(value_list)
-        print(values)
 
         # Construct the full insert query
-        insert_into_values_query = f"INSERT INTO {destination_table} ({columns}) VALUES {values};"
-        print(insert_into_values_query)
+        insert_into_values_query = f"INSERT INTO {schema}.{table} ({columns}) VALUES {values};"
         
         self._execute(insert_into_values_query)
 
@@ -208,11 +211,11 @@ class Postgres:
     def _connect(self):
         """Establish a connection to a Postgres db instance."""
         self.conn = psycopg2.connect(
-            host = self.db_details["host"],
-            port = self.db_details["port"],
-            dbname = self.db_details["dbname"],
-            user = self.db_details["user"],
-            password = self.db_details["pass"]
+            host=self.host,
+            port=self.port,
+            dbname=self.db_name,
+            user=self.user,
+            password=self.password
         )
 
         self.cursor = self.conn.cursor()
@@ -234,7 +237,3 @@ class Postgres:
 
     def _execute(self, query, args=None):
         self.cursor.execute(query, args)
-
-if __name__ == "__main__":
-    postgres = Postgres()
-    
