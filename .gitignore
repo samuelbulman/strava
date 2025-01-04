@@ -1,5 +1,5 @@
-**.secrets/
-**.tokens/
-**data/
-**strava_env/
-**__pycache__/
+*secrets/
+*tokens/
+data/
+*env
+__pycache__/
