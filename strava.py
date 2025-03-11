@@ -7,9 +7,11 @@ from typing import Dict, Any
 
 # Third party imports
 import pandas as pd
+from dotenv import load_dotenv
 
 # Local imports
 from modules.postgres import Postgres
+from modules.google_sheets import GoogleSheets
 
 
 def fetch_strava_activities(
@@ -24,7 +26,7 @@ def fetch_strava_activities(
     )
 
     if access_token:
-        activities_data = strava_api_activities_response(access_token, detailed_activities=False)
+        activities_data = strava_api_activities_response(access_token)
         activities = {
             "activity_id": [],
             "activity_name": [],
@@ -53,41 +55,79 @@ def fetch_strava_activities(
             activities["activity_avg_speed"].append(activity.get("average_speed"))
             activities["activity_max_speed"].append(activity.get("max_speed"))
             # annoyingly, we have to hit a detailed activities endpoint to fetch how many calories were burned during a workout :roll-eyes:
-            detailed_activity_response = strava_api_activities_response(access_token, detailed_activities=True, activity_id=activity.get("id"))
+            # this needs to be refactored to update calories detail incrementally. this pattern is butts-up against api rate limits
+            detailed_activity_response = strava_api_detailed_activities_response(access_token, activity_id=activity.get("id"))
             activities["calories_burned"].append(detailed_activity_response.get("calories"))
         
         return pd.DataFrame(data=activities, columns=[key for key in activities.keys()])
             
     else:
-        print("Could not get a valid access token.")
+        print("Something went wrong - could not get a valid access token.")
     
 
 def strava_api_activities_response(
         access_token:str,
-        detailed_activities:bool=False,
-        activity_id:int=None,
     ) -> dict:
     """
     Makes a request to Strava's activities endpoint and returns a json response containing athlete activity data if successful.
     
     Parameters
     ----------
-    detailed_activities (bool):
-    - When set to False, a request is made to return a list of all athelete activities (https://developers.strava.com/docs/reference/#api-Activities-getLoggedInAthleteActivities).
-    - When set to True, a request is made to the activities endpoint for a specific activity_id, returning detailed information about that activity (https://developers.strava.com/docs/reference/#api-models-DetailedActivity).
+    access_token (str)
+    - fill
     """
+
+    activities = []
+    page = 1
+    per_page = 50
+    headers = {"Authorization": f"Bearer {access_token}"}
+    url = "https://www.strava.com/api/v3/athlete/activities"
+
+
+    while True:
+        params = {'per_page': per_page, 'page': page}
+        response = requests.get(url=url, headers=headers, params=params)
+        json_response = response.json()
+
+        # break out of while loop once all activities have been exhausted
+        if len(json_response) == 0:
+            break
+
+        if response.status_code == 200:
+            activities.extend(json_response)
+            
+        else:
+            print(f"Error fetching data: {response.status_code}, {response.json()}")
+            break
+
+        page += 1
     
+    return activities
+
+
+def strava_api_detailed_activities_response(
+        access_token:str,
+        activity_id:int=None,
+    ) -> dict:
+    """
+    Makes a request to Strava's detailed activities endpoint and returns a json response
+    json response containing extrra information for an individual activity if successful.
+    
+    Parameters
+    ----------
+    activity_id (int):
+    - The specific activity to fetch detailed information about (https://developers.strava.com/docs/reference/#api-models-DetailedActivity).
+    """
+
     headers = {"Authorization": f"Bearer {access_token}"}
 
-    if detailed_activities:
-        url = f"https://www.strava.com/api/v3/activities/{activity_id}"
-    else:
-        url = "https://www.strava.com/api/v3/athlete/activities"
+    url = f"https://www.strava.com/api/v3/activities/{activity_id}"
 
     response = requests.get(url=url, headers=headers)
 
     if response.status_code == 200:
         return response.json()
+    
     else:
         print(f"Error fetching data: {response.status_code}, {response.json()}")
 
@@ -109,8 +149,8 @@ def fetch_strava_athletes(
             headers={"Authorization": f"Bearer {access_token}"}
         )
 
-         # if our request is successful, parse the response and
-        # stage activity records as a dictionary for later use
+        # if our request is successful, parse the response
+        # and stage activity records for later reference
         if response.status_code == 200:
             athlete = response.json()
             user_dict = {
@@ -184,37 +224,59 @@ def load_strava_data_to_postgres(
     ):
     """Loads Strava source data to target Postgres table."""
 
-    psql = Postgres()
-
     print("Fetching strava activities data...\n")
-    strava_df = fetch_strava_activities(
+    strava_activities_df = fetch_strava_activities(
         client_id=strava_client_id,
         client_secret=strava_client_secret
     )
     print("Successfully fetched strava activities data!\n")
 
-    print("Loading strava activities data to Postgres...\n")
-    psql.load_dataframe_to_table(
-        df=strava_df,
-        schema="strava",
-        table="strava_activities"
-    )
-    print("\nSuccessfully loaded strava activities data to Postgres!\n")
-
     print("Fetching strava athletes data...\n")
-    strava_df = fetch_strava_athletes(
+    strava_athletes_df = fetch_strava_athletes(
         client_id=strava_client_id,
         client_secret=strava_client_secret
     )
     print("Successfully fetched strava athletes data!\n")
 
-    print("Loading strava athletes data to Postgres...\n")
-    psql.load_dataframe_to_table(
-        df=strava_df,
-        schema="strava",
-        table="strava_athletes"
+    with Postgres() as psql:
+
+        print("Loading strava activities data to Postgres...\n")
+        psql.load_dataframe_to_table(
+            df=strava_activities_df,
+            schema="strava",
+            table="strava_activities"
+        )
+        print("\nSuccessfully loaded strava activities data to Postgres!\n")
+
+        print("Loading strava athletes data to Postgres...\n")
+        psql.load_dataframe_to_table(
+            df=strava_athletes_df,
+            schema="strava",
+            table="strava_athletes"
+        )
+        print("\nSuccessfully loaded strava athletes data to Postgres!\n")
+
+
+def postgres_to_google_sheets(
+        sql_query:str,
+        google_sheet_spreadsheet_id:str,
+        google_sheet_worksheet_name:str,
+    ):
+
+    with Postgres() as psql:
+        print("Querying postgres for Strava activities...")
+        strava_df = psql.query_postgres(sql_query=sql_query, return_df=True)
+        print("Strava activities retrieved!")
+
+    sheet = GoogleSheets(google_sheet_spreadsheet_id=google_sheet_spreadsheet_id)
+
+    print("Importing Strava data to google sheets...")
+    sheet.import_df_to_google_sheet(
+        dataframe=strava_df,
+        google_sheet_worksheet_name=google_sheet_worksheet_name,
+        clear_and_resize_sheet=True
     )
-    print("\nSuccessfully loaded strava athletes data to Postgres!\n")
+    print("Strava data imported!")
 
 
 def fetch_secrets() -> Dict[str, Any]:
@@ -224,14 +286,49 @@ def fetch_secrets() -> Dict[str, Any]:
 
     with open(f"{os.path.dirname(os.path.abspath(__file__))}{strava_secrets_path}") as secrets:
         return json.load(secrets)
+    
+
+def read_sql(file_path:str) -> str:
+    """
+    Returns the entire contents of a SQL file.
+
+    Parameters
+    ----------
+    file_path (str):
+    - The path to a SQL file
+    """
+
+    try:
+        with open(file_path, 'r') as file:
+            file_contents = file.read()
+        return file_contents
+    
+    except FileNotFoundError:
+        print(f"Error: File not found at {file_path}")
+        return None
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
 
 
 if __name__ == "__main__":
+    load_dotenv()
     secrets = fetch_secrets()
     strava_client_id = secrets["client_id"]
     strava_client_secret = secrets["client_secret"]
     token_file_path = secrets["token_file_path"]
+
     load_strava_data_to_postgres(
       strava_client_id=strava_client_id,
       strava_client_secret=strava_client_secret
+    )
+
+    file_name = "strava_activities.sql"
+    sql_query = read_sql(f"{os.getcwd()}/sql/{file_name}")
+
+    postgres_to_google_sheets(
+        sql_query=sql_query,
+        google_sheet_spreadsheet_id=os.getenv("target_spreadsheet_id"),
+        google_sheet_worksheet_name=os.getenv("target_worksheet_id")
     )
