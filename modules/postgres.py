@@ -23,6 +23,25 @@ class Postgres:
         self.db_name = os.getenv('db_name')
         self.user = os.getenv('user')
         self.password = os.getenv('password')
+        self.conn = None
+        self.cursor = None
+
+    
+    def __enter__(self):
+        """Establish connection when entering context."""
+
+        self._connect()
+        return self
+        
+    
+    def __exit__(self, exception_type, exception_value, traceback):
+        """Ensure disconnection on exiting context."""
+        if exception_type:
+            print(f"An error occurred: {exception_value}")
+            self._rollback()
+        
+        self._disconnect()
+
     
 
     def query_postgres(
@@ -223,8 +242,10 @@ class Postgres:
     
     def _disconnect(self):
         """Close the connection to db instance."""
-        self.cursor.close()
-        self.conn.close()
+        if self.cursor:
+            self.cursor.close()
+        if self.conn:
+            self.conn.close()
 
     
     def _commit(self):
