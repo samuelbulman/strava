@@ -140,8 +140,8 @@ def strava_api_detailed_activities_response(
         print(f"Error fetching data: {response.status_code}, {response.json()}")
 
 
-def fetch_existing_activity_ids():
-    """"""
+def fetch_existing_activity_ids() -> dict:
+    """Retrieves Strava activities that have already been loaded to Postgres. Return value is a dictionary of activity id's and their respective calories count."""
     existing_activity_records = {
         "activity_id": [],
         "calories": []
