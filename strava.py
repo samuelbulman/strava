@@ -19,60 +19,63 @@ def fetch_strava_activities(
         client_secret:str
     ) -> pd.DataFrame:
     """Returns a Pandas DataFrame containing a strava athletes activity data from the activities endpoint(s)."""
+    try:
+        access_token = access_token_workflow(
+            client_id=client_id,
+            client_secret=client_secret
+        )
 
-    access_token = access_token_workflow(
-        client_id=client_id,
-        client_secret=client_secret
-    )
+        if access_token:
+            activities_data = strava_api_activities_response(access_token)
+            activities = {
+                "activity_id": [],
+                "activity_name": [],
+                "athlete_id": [],
+                "activity_type": [],
+                "activity_timestamp": [],
+                "activity_distance": [],
+                "activity_duration_seconds": [],
+                "activity_elevation_high": [],
+                "activity_elevation_low": [],
+                "activity_avg_speed": [],
+                "activity_max_speed": [],
+                "calories_burned": [],
+            }
 
-    if access_token:
-        activities_data = strava_api_activities_response(access_token)
-        activities = {
-            "activity_id": [],
-            "activity_name": [],
-            "athlete_id": [],
-            "activity_type": [],
-            "activity_timestamp": [],
-            "activity_distance": [],
-            "activity_duration_seconds": [],
-            "activity_elevation_high": [],
-            "activity_elevation_low": [],
-            "activity_avg_speed": [],
-            "activity_max_speed": [],
-            "calories_burned": [],
-        }
+            existing_activities = fetch_existing_activity_ids()
 
-        existing_activities = fetch_existing_activity_ids()
+            print(f"{len(activities_data)} activities fetched from Strava API.\n{len(existing_activities['activity_id'])} activity records retrieved from Postgres.\n{len(activities_data) - len(existing_activities['activity_id'])} new records will be imported:\n")
 
-        print(f"{len(activities_data)} activities fetched from Strava API.\n{len(existing_activities['activity_id'])} activity records retrieved from Postgres.\n{len(activities_data) - len(existing_activities['activity_id'])} new records will be imported.")
+            for activity in activities_data:
+                activities["activity_id"].append(activity.get("id"))
+                activities["activity_name"].append(activity.get("name"))
+                activities["athlete_id"].append(activity.get("athlete", {}).get("id", None))
+                activities["activity_type"].append(activity.get("type"))
+                activities["activity_timestamp"].append(activity.get("start_date_local"))
+                activities["activity_distance"].append(activity.get("distance"))
+                activities["activity_duration_seconds"].append(activity.get("elapsed_time"))
+                activities["activity_elevation_high"].append(activity.get("elev_high"))
+                activities["activity_elevation_low"].append(activity.get("elev_low"))
+                activities["activity_avg_speed"].append(activity.get("average_speed"))
+                activities["activity_max_speed"].append(activity.get("max_speed"))
+                # annoyingly, we have to hit a separate, detailed-activities endpoint to fetch how many calories were burned during a workout :roll-eyes:
+                # to avoid rate limit errors, we can grab previously fetched calorie counts from postgres. if the current activity_id in the loop has not 
+                # yet been loaded to postgres, then we will hit the detailed activities endpoint to grab that information.
+                if activity.get("id") in existing_activities["activity_id"]:
+                    activities["calories_burned"].append(existing_activities["calories"][existing_activities["activity_id"].index(activity.get("id"))])
 
-        for activity in activities_data:
-            activities["activity_id"].append(activity.get("id"))
-            activities["activity_name"].append(activity.get("name"))
-            activities["athlete_id"].append(activity.get("athlete", {}).get("id", None))
-            activities["activity_type"].append(activity.get("type"))
-            activities["activity_timestamp"].append(activity.get("start_date_local"))
-            activities["activity_distance"].append(activity.get("distance"))
-            activities["activity_duration_seconds"].append(activity.get("elapsed_time"))
-            activities["activity_elevation_high"].append(activity.get("elev_high"))
-            activities["activity_elevation_low"].append(activity.get("elev_low"))
-            activities["activity_avg_speed"].append(activity.get("average_speed"))
-            activities["activity_max_speed"].append(activity.get("max_speed"))
-            # annoyingly, we have to hit a separate, detailed-activities endpoint to fetch how many calories were burned during a workout :roll-eyes:
-            # to avoid rate limit errors, we can grab previously fetched calorie counts from postgres. if the current activity_id in the loop has not 
-            # yet been loaded to postgres, then we will hit the detailed activities endpoint to grab that information.
-            if activity.get("id") in existing_activities["activity_id"]:
-                activities["calories_burned"].append(existing_activities["calories"][existing_activities["activity_id"].index(activity.get("id"))])
-
-            else:
-                print(f"New Activity detected - {activity.get('name')} on {activity.get('start_date_local')}")
-                detailed_activity_response = strava_api_detailed_activities_response(access_token, activity_id=activity.get("id"))
-                activities["calories_burned"].append(detailed_activity_response.get("calories"))
-        
-        return pd.DataFrame(data=activities, columns=[key for key in activities.keys()])
+                else:
+                    print(f"- New Activity detected: {activity.get('name')} on {activity.get('start_date_local')}")
+                    detailed_activity_response = strava_api_detailed_activities_response(access_token, activity_id=activity.get("id"))
+                    activities["calories_burned"].append(detailed_activity_response.get("calories"))
             
-    else:
-        print("Something went wrong - could not get a valid access token.")
+            return pd.DataFrame(data=activities, columns=[key for key in activities.keys()])
+                
+        else:
+            print("Something went wrong - could not get a valid access token.")
+    
+    except Exception as e:
+        print(f"Error:  {e}")
     
 
 def strava_api_activities_response(access_token:str) -> dict:
@@ -254,18 +257,18 @@ def load_strava_data_to_postgres(
         client_id=strava_client_id,
         client_secret=strava_client_secret
     )
-    print("Successfully fetched strava activities data!\n")
+    print("\nActivity data successfully fetched.\n")
 
-    print("Fetching strava athletes data...\n")
+    print("Next, fetching strava athletes data...\n")
     strava_athletes_df = fetch_strava_athletes(
         client_id=strava_client_id,
         client_secret=strava_client_secret
     )
-    print("Successfully fetched strava athletes data!\n")
+    print("Athlete data successfully fetched.\n")
 
     with Postgres() as psql:
 
-        print("Loading strava activities data to Postgres...\n")
+        print("Preparing to write data to Postgres...\n")
         psql.load_dataframe_to_table(
             df=strava_activities_df,
             schema="strava",
@@ -342,7 +345,7 @@ if __name__ == "__main__":
 
     start_time = time.time()
     start_time_str = time.strftime("%Y-%m-%d %H:%M:%S")
-    print(f"""---------------------------------------------------\nScript initiated at  {start_time_str}\n---------------------------------------------------\n""")
+    print(f"""---------------------------------------------------\n| Script initiated at  {start_time_str}\n---------------------------------------------------\n""")
     secrets = fetch_secrets()
     strava_client_id = secrets["client_id"]
     strava_client_secret = secrets["client_secret"]
@@ -364,5 +367,5 @@ if __name__ == "__main__":
 
     end_time = time.time()
     end_time_str = time.strftime("%Y-%m-%d %H:%M:%S")
-    print(f"""\n---------------------------------------------------\nScript completed at  {end_time_str}\n---------------------------------------------------\n""")
+    print(f"""\n---------------------------------------------------\n| Script completed at  {end_time_str}\n---------------------------------------------------\n""")
     print(f"Finished running in {round(number=end_time - start_time, ndigits=2)} seconds.")
