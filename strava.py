@@ -8,10 +8,29 @@ from typing import Dict, Any
 # Third party imports
 import pandas as pd
 from dotenv import load_dotenv
+from pprint import pprint
 
 # Local imports
 from modules.postgres import Postgres
 from modules.google_sheets import GoogleSheets
+
+def inspect_response(
+        client_id:str,
+        client_secret:str
+    ):
+    """Call adhoc when you want to print/inspect the response of the Strava API"""
+    try:
+        access_token = access_token_workflow(
+            client_id=client_id,
+            client_secret=client_secret
+        )
+
+        if access_token:
+            activities_data = strava_api_activities_response(access_token)
+            pprint(activities_data)
+    
+    except Exception as e:
+        print(f"Error - {e}")
 
 
 def fetch_strava_activities(
@@ -40,6 +59,8 @@ def fetch_strava_activities(
                 "activity_avg_speed": [],
                 "activity_max_speed": [],
                 "calories_burned": [],
+                "average_heartrate": [],
+                "max_heartrate": [],
             }
 
             existing_activities = fetch_existing_activity_ids()
@@ -58,9 +79,13 @@ def fetch_strava_activities(
                 activities["activity_elevation_low"].append(activity.get("elev_low"))
                 activities["activity_avg_speed"].append(activity.get("average_speed"))
                 activities["activity_max_speed"].append(activity.get("max_speed"))
-                # annoyingly, we have to hit a separate, detailed-activities endpoint to fetch how many calories were burned during a workout :roll-eyes:
-                # to avoid rate limit errors, we can grab previously fetched calorie counts from postgres. if the current activity_id in the loop has not 
+                activities["average_heartrate"].append(activity.get("average_heartrate"))
+                activities["max_heartrate"].append(activity.get("max_heartrate"))
+
+                # Annoyingly, we have to hit a separate, detailed-activities endpoint to fetch how many calories were burned during a workout :roll-eyes:
+                # To avoid rate limit errors, we can grab previously fetched calorie counts from postgres. if the current activity_id in the loop has not 
                 # yet been loaded to postgres, then we will hit the detailed activities endpoint to grab that information.
+
                 if activity.get("id") in existing_activities["activity_id"]:
                     activities["calories_burned"].append(existing_activities["calories"][existing_activities["activity_id"].index(activity.get("id"))])
 
@@ -69,7 +94,12 @@ def fetch_strava_activities(
                     detailed_activity_response = strava_api_detailed_activities_response(access_token, activity_id=activity.get("id"))
                     activities["calories_burned"].append(detailed_activity_response.get("calories"))
             
-            return pd.DataFrame(data=activities, columns=[key for key in activities.keys()])
+            # Convert dict to Pandas dataframe and set all NaN values to None so Postgres correctly interprets these as nulls
+            df = pd.DataFrame(data=activities, columns=[key for key in activities.keys()])
+            df = df.astype(object) 
+            df = df.where(pd.notna(df), None)
+
+            return df
                 
         else:
             print("Something went wrong - could not get a valid access token.")
@@ -350,6 +380,8 @@ if __name__ == "__main__":
     strava_client_id = secrets["client_id"]
     strava_client_secret = secrets["client_secret"]
     token_file_path = secrets["token_file_path"]
+
+    # inspect_json(client_id=strava_client_id, client_secret=strava_client_secret)
 
     load_strava_data_to_postgres(
       strava_client_id=strava_client_id,

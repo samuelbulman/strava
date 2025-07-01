@@ -21,6 +21,8 @@ select
     ,activity_elevation_high
     ,activity_avg_speed
     ,activity_max_speed
+    ,average_heartrate
+    ,max_heartrate
     ,calories_burned
     ,calories_burned / (activity_duration_seconds / 60) as calories_burned_per_minute 
 from strava.strava_activities;
