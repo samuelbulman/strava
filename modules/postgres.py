@@ -84,7 +84,8 @@ class Postgres:
             self,
             df:pd.DataFrame, 
             schema:str,
-            table:str
+            table:str,
+            log_actions:bool = False
         ):
         """
         This function drops and rebuilds a specified table with data from a given DataFrame.
@@ -104,16 +105,22 @@ class Postgres:
 
             if table_exists:
                 self._execute(f"DROP TABLE IF EXISTS {schema}.{table};")
-                print(f"Table '{schema}.{table}' dropped successfully.")
+
+                if log_actions:
+                    print(f"Table '{schema}.{table}' dropped successfully.")
 
             # Create destination table - potentially revisit this to leverage SHOW TABLE statement to generated CREATE TABLE statement if we know the dataframe structure will not change over time
             self._execute_create_table_query(df, schema, table)
-            print(f"Table '{schema}.{table}' created successfully.")
+
+            if log_actions:
+                print(f"Table '{schema}.{table}' created successfully.")
 
             # Load DataFrame to table and commit transaction
             self._execute_insert_into_values_query(df, schema, table)
             self._commit()
-            print(f"DataFrame loaded to table '{schema}.{table}' successfully.")
+            
+            if log_actions:
+                print(f"DataFrame loaded to table '{schema}.{table}' successfully.")
         
         except Exception as e:
             self._rollback()
@@ -158,7 +165,7 @@ class Postgres:
             column_definitions.append(f"{column} {column_type}")
         
         create_table_query = f"CREATE TABLE {schema}.{table} ({', '.join(column_definitions)});"
-        
+
         self._execute(create_table_query)
     
 
