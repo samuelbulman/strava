@@ -9,6 +9,7 @@ from typing import Dict, Any
 import pandas as pd
 from dotenv import load_dotenv
 from pprint import pprint
+from colorama import Fore, Style
 
 # Local imports
 from modules.postgres import Postgres
@@ -38,6 +39,7 @@ def fetch_strava_activities(
         client_secret:str
     ) -> pd.DataFrame:
     """Returns a Pandas DataFrame containing a strava athletes activity data from the activities endpoint(s)."""
+
     try:
         access_token = access_token_workflow(
             client_id=client_id,
@@ -65,9 +67,15 @@ def fetch_strava_activities(
 
             existing_activities = fetch_existing_activity_ids()
 
-            print(f"{len(activities_data)} activities fetched from Strava API.\n{len(existing_activities['activity_id'])} activity records retrieved from Postgres.\n{len(activities_data) - len(existing_activities['activity_id'])} new records will be imported:\n")
+            print(f"""{log_prefix(log_type='info')} {len(activities_data)} activities fetched from Strava API.
+{log_prefix(log_type='info')} {len(exclusion_activities)} activities will be excluded from import.
+{log_prefix(log_type='info')} {len(existing_activities['activity_id'])} activity records retrieved from Postgres.
+{log_prefix(log_type='info')} {len(activities_data) - len(existing_activities['activity_id']) - len(exclusion_activities)} new records will be imported.""")
 
             for activity in activities_data:
+                if activity.get("id") in exclusion_activities:
+                    continue
+
                 activities["activity_id"].append(activity.get("id"))
                 activities["activity_name"].append(activity.get("name"))
                 activities["athlete_id"].append(activity.get("athlete", {}).get("id", None))
@@ -90,7 +98,7 @@ def fetch_strava_activities(
                     activities["calories_burned"].append(existing_activities["calories"][existing_activities["activity_id"].index(activity.get("id"))])
 
                 else:
-                    print(f"- New Activity detected: {activity.get('name')} on {activity.get('start_date_local')}")
+                    print(f"{log_prefix(log_type='info')} New {activity.get('type')} activity detected: {activity.get('name')} on {activity.get('start_date_local')}")
                     detailed_activity_response = strava_api_detailed_activities_response(access_token, activity_id=activity.get("id"))
                     activities["calories_burned"].append(detailed_activity_response.get("calories"))
             
@@ -102,10 +110,10 @@ def fetch_strava_activities(
             return df
                 
         else:
-            print("Something went wrong - could not get a valid access token.")
+            print(f"{log_prefix(log_type='error')} Something went wrong - could not obtain valid access token?")
     
     except Exception as e:
-        print(f"Error:  {e}")
+        print(f"{log_prefix(log_type='error')} Error fetching Strava data:  {e}")
     
 
 def strava_api_activities_response(access_token:str) -> dict:
@@ -138,7 +146,7 @@ def strava_api_activities_response(access_token:str) -> dict:
             activities.extend(json_response)
             
         else:
-            print(f"Error fetching data: {response.status_code}, {response.json()}")
+            print(f"{log_prefix(log_type='error')} Error fetching data: {response.status_code}, {response.json()}")
             break
 
         page += 1
@@ -170,7 +178,7 @@ def strava_api_detailed_activities_response(
         return response.json()
     
     else:
-        print(f"Error fetching data: {response.status_code}, {response.json()}")
+        print(f"{log_prefix(log_type='error')} Error fetching data: {response.status_code}, {response.json()}")
 
 
 def fetch_existing_activity_ids() -> dict:
@@ -271,9 +279,9 @@ def save_token_data_locally(
     """Save Strava Access & Refresh tokens locally so tokens persist beyond script completion."""
 
     with open(token_file_path, "w") as token_file:
-        print("Saving strava access and refresh tokens...")
+        print(f"{log_prefix(log_type='info')} Saving strava access and refresh tokens...")
         json.dump(token_data, token_file)
-        print("Tokens saved successfully!\n")
+        print(f"{log_prefix(log_type='info')} Tokens saved successfully!\n")
 
 
 def load_strava_data_to_postgres(
@@ -282,37 +290,53 @@ def load_strava_data_to_postgres(
     ):
     """Loads Strava source data to target Postgres table."""
     
-    print("Fetching strava activities data...\n")
-    strava_activities_df = fetch_strava_activities(
-        client_id=strava_client_id,
-        client_secret=strava_client_secret
-    )
-    print("\nActivity data successfully fetched.\n")
+    try:
+        print(f"{log_prefix(log_type='info')} Fetching strava activities data...")
+        strava_activities_df = fetch_strava_activities(
+            client_id=strava_client_id,
+            client_secret=strava_client_secret
+        )
+        print(f"{log_prefix(log_type='info')} Successfully fetched strava activities data!")
+    
+    except Exception as e:
+        print(f"{log_prefix(log_type='error')} Error fetching strava activities data:\n\n{e}")
 
-    print("Next, fetching strava athletes data...\n")
-    strava_athletes_df = fetch_strava_athletes(
-        client_id=strava_client_id,
-        client_secret=strava_client_secret
-    )
-    print("Athlete data successfully fetched.\n")
+    try:
+        print(f"{log_prefix(log_type='info')} Fetching strava athletes data...")
+        strava_athletes_df = fetch_strava_athletes(
+            client_id=strava_client_id,
+            client_secret=strava_client_secret
+        )
+        print(f"{log_prefix(log_type='info')} Successfully fetched strava athletes data!")
+    
+    except Exception as e:
+        print(f"{log_prefix(log_type='error')} Error fetching strava athletes data:\n\n{e}")
 
     with Postgres() as psql:
-
-        print("Preparing to write data to Postgres...\n")
-        psql.load_dataframe_to_table(
-            df=strava_activities_df,
-            schema="strava",
-            table="strava_activities"
-        )
-        print("\nSuccessfully loaded strava activities data to Postgres!\n")
-
-        print("Loading strava athletes data to Postgres...\n")
-        psql.load_dataframe_to_table(
-            df=strava_athletes_df,
-            schema="strava",
-            table="strava_athletes"
-        )
-        print("\nSuccessfully loaded strava athletes data to Postgres!\n")
+        
+        try:
+            print(f"{log_prefix(log_type='info')} Loading strava activities data to Postgres...")
+            psql.load_dataframe_to_table(
+                df=strava_activities_df,
+                schema="strava",
+                table="strava_activities"
+            )
+            print(f"{log_prefix(log_type='info')} Successfully loaded strava activities data to Postgres!")
+   
+        except Exception as e:
+            print(f"{log_prefix(log_type='error')} Error loading strava activities data:\n\n{e}")
+        
+        try:
+            print(f"{log_prefix(log_type='info')} Loading strava athletes data to Postgres...")
+            psql.load_dataframe_to_table(
+                df=strava_athletes_df,
+                schema="strava",
+                table="strava_athletes"
+            )
+            print(f"{log_prefix(log_type='info')} Successfully loaded strava athletes data to Postgres!")
+        
+        except Exception as e:
+            print(f"{log_prefix(log_type='error')} Error loading strava athletes data:\n\n{e}")
 
 
 def postgres_to_google_sheets(
@@ -321,20 +345,24 @@ def postgres_to_google_sheets(
         google_sheet_worksheet_name:str,
     ):
 
-    with Postgres() as psql:
-        print("Querying postgres for Strava activities...")
-        strava_df = psql.query_postgres(sql_query=sql_query, return_df=True)
-        print("Strava activities retrieved!")
+    try:
+        with Postgres() as psql:
+            print(f"{log_prefix(log_type='info')} Querying postgres for Strava activities...")
+            strava_df = psql.query_postgres(sql_query=sql_query, return_df=True)
+            print(f"{log_prefix(log_type='info')} Strava activities retrieved!")
 
-    sheet = GoogleSheets(google_sheet_spreadsheet_id=google_sheet_spreadsheet_id)
+        sheet = GoogleSheets(google_sheet_spreadsheet_id=google_sheet_spreadsheet_id)
 
-    print("Importing Strava data to google sheets...")
-    sheet.import_df_to_google_sheet(
-        dataframe=strava_df,
-        google_sheet_worksheet_name=google_sheet_worksheet_name,
-        clear_and_resize_sheet=True
-    )
-    print("Strava data imported!")
+        print(f"{log_prefix(log_type='info')} Importing Strava data to google sheets...")
+        sheet.import_df_to_google_sheet(
+            dataframe=strava_df,
+            google_sheet_worksheet_name=google_sheet_worksheet_name,
+            clear_and_resize_sheet=True
+        )
+        print(f"{log_prefix(log_type='info')} Strava data imported!")
+    
+    except Exception as e:
+        print(f"{log_prefix(log_type='error')} Error importing to google sheets:\n\n{e}")
 
 
 def fetch_secrets() -> Dict[str, Any]:
@@ -362,12 +390,43 @@ def read_sql(file_path:str) -> str:
         return file_contents
     
     except FileNotFoundError:
-        print(f"Error: File not found at {file_path}")
+        print(f"{log_prefix(log_type='error')} Error: File not found at {file_path}")
         return None
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f"{log_prefix(log_type='error')} An error occurred: {e}")
         return None
+    
+def log_prefix(log_type: str) -> str:
+    """Returns a prefix for adding timne and type details to the scripts logs"""
+
+    formatted_log_time = time.strftime('%Y-%m-%d %H:%M:%S')
+
+    if log_type.upper() in ("START", "END"):
+        keyword_color = Fore.GREEN
+        dots_after_keyword = 5 if log_type.upper() == "START" else 7
+
+    elif log_type.upper() == 'INFO':
+        keyword_color = Fore.YELLOW
+        dots_after_keyword = 6
+
+    elif log_type.upper() == 'ERROR':
+        keyword_color = Fore.RED
+        dots_after_keyword = 5
+
+    else:
+        keyword_color = Fore.WHITE
+        dots_after_keyword = 5
+
+    dots_post_keyword = "." * dots_after_keyword
+
+    reset = Style.RESET_ALL
+
+    formatted_log_descriptor = f"[{keyword_color}{log_type.upper()}{reset}] {dots_post_keyword}" if log_type else ""
+
+    log_prefix = f"{formatted_log_time} {formatted_log_descriptor}"
+
+    return log_prefix
 
 
 if __name__ == "__main__":
@@ -375,11 +434,12 @@ if __name__ == "__main__":
 
     start_time = time.time()
     start_time_str = time.strftime("%Y-%m-%d %H:%M:%S")
-    print(f"""---------------------------------------------------\n| Script initiated at  {start_time_str}\n---------------------------------------------------\n""")
+    print(f"{log_prefix(log_type='start')} SCRIPT INITIATED")
     secrets = fetch_secrets()
     strava_client_id = secrets["client_id"]
     strava_client_secret = secrets["client_secret"]
     token_file_path = secrets["token_file_path"]
+    exclusion_activities = [14944301862]
 
     # inspect_json(client_id=strava_client_id, client_secret=strava_client_secret)
 
@@ -399,5 +459,4 @@ if __name__ == "__main__":
 
     end_time = time.time()
     end_time_str = time.strftime("%Y-%m-%d %H:%M:%S")
-    print(f"""\n---------------------------------------------------\n| Script completed at  {end_time_str}\n---------------------------------------------------\n""")
-    print(f"Finished running in {round(number=end_time - start_time, ndigits=2)} seconds.")
+    print(f"{log_prefix(log_type='end')} SCRIPT COMPLETED - Finished running in {round(number=end_time - start_time, ndigits=2)} seconds.")
