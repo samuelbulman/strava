@@ -47,20 +47,40 @@ select
     ,least(calories_burned / (activity_duration_seconds / 60) / 20.0, 1.0) * 100 as scaled_calories_per_min
   	,least(greatest((max_heartrate - 100) / 100.0, 0), 1.0) * 100 as scaled_max_hr
   	,least(round(activity_duration_seconds / 60.00, 2) / 90.0, 1.0) * 100 as scaled_duration
+  	,least(calories_burned / 1000.0, 1.0) * 100 as scaled_total_calories
   	-- calculate the final intensity score for an activity, paying weighted respects to the individual components of an activity 
-  	,round(
-    	((0.4 * least(calories_burned / (activity_duration_seconds / 60) / 20.0, 1.0) * 100) +
-    	(0.3 * least(greatest((max_heartrate - 100) / 100.0, 0), 1.0) * 100) +
-    	(0.3 * least(round(activity_duration_seconds / 60.00, 2) / 90.0, 1.0) * 100))::int
-    	* case
-			when activity_type in ('Swim', 'Surfing') then 1.4
-			when activity_type = 'Run' then 1.3
-			when activity_type = 'WeightTraining' then 1.2
-			when activity_type = 'Workout' then 0.9
-			when activity_type = 'Yoga' then 0.8
-			when activity_type in ('Ride','Walk') then 0.7
-			when activity_type = 'Golf' then 0.4
-			else 1.0
-		  end
+  	,round((
+  		0.5 * least(calories_burned / (activity_duration_seconds / 60.0) / 20.0, 1.0) * 100 +
+        0.15 * least(greatest((max_heartrate - 100) / 100.0, 0), 1.0) * 100 +
+        0.4 * least(calories_burned / 1000.0, 1.0) * 100 +
+        0.05 * least(round(activity_duration_seconds / 60.0, 2) / 90.0, 1.0) * 100
+        )::int * case
+                    when activity_type in ('Swim', 'Surfing') then 1.4
+                    when activity_type = 'Run' then 1.3
+                    when activity_type = 'WeightTraining' then 1.2
+                    when activity_type = 'Workout' then 0.9
+                    when activity_type = 'Yoga' then 0.8
+                    when activity_type in ('Ride','Walk') then 0.7
+                    when activity_type = 'Golf' then 0.4
+                    else 1.0
+                 end
   	, 1) as activity_intensity_score
+    ,dense_rank() over (
+        order by round((
+            0.5 * least(calories_burned / (activity_duration_seconds / 60.0) / 20.0, 1.0) * 100 +
+            0.15 * least(greatest((max_heartrate - 100) / 100.0, 0), 1.0) * 100 +
+            0.4 * least(calories_burned / 1000.0, 1.0) * 100 +
+            0.05 * least(round(activity_duration_seconds / 60.0, 2) / 90.0, 1.0) * 100
+        )::int * case
+                    when activity_type in ('Swim', 'Surfing') then 1.4
+                    when activity_type = 'Run' then 1.3
+                    when activity_type = 'WeightTraining' then 1.2
+                    when activity_type = 'Workout' then 0.9
+                    when activity_type = 'Yoga' then 0.8
+                    when activity_type in ('Ride','Walk') then 0.7
+                    when activity_type = 'Golf' then 0.4
+                    else 1.0
+                 end
+  	, 1) desc
+    ) as activity_intensity_rank
 from strava.strava_activities;
