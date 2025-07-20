@@ -281,7 +281,7 @@ def save_token_data_locally(
     with open(token_file_path, "w") as token_file:
         print(f"{log_prefix(log_type='info')} Saving strava access and refresh tokens...")
         json.dump(token_data, token_file)
-        print(f"{log_prefix(log_type='info')} Tokens saved successfully!\n")
+        print(f"{log_prefix(log_type='info')} Tokens saved successfully!")
 
 
 def load_strava_data_to_postgres(
