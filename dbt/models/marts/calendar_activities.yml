@@ -1,0 +1,77 @@
+version: 2
+
+
+models:
+  - name: calendar_activities
+    description: |
+      This table represents a calendar-aligned spine for Strava activity tracking. Its grain is at the day + activity level. 
+      If multiple activities occurred on a given day, there will be multiple records for that date—one per activity. Days with 
+      no activities will still appear as standalone rows with null activity fields, ensuring every date is represented regardless 
+      of whether an activity was recorded on that day in support of time series analysis and visualization of gaps in user activity over time.
+
+    columns:
+      - name: date_day
+        description: Calendar date in YYYY-MM-DD format
+
+      - name: day_name
+        description: Name of the day corresponding to the date (e.g., Monday, Tuesday)
+
+      - name: activity_id
+        description: Unique identifier for the activity, sourced from Strava
+
+      - name: activity_name
+        description: User-defined or Strava-generated name of the activity
+
+      - name: athlete_full_name
+        description: Full name of the athlete who performed the activity
+
+      - name: bro_split_bucket
+        description: Custom categorical label for activity type (e.g., Arms, Chest, Legs, Golf) based on activity name and type
+
+      - name: is_weight_training_activity
+        description: Boolean flag indicating if the activity is a weight training session
+
+      - name: activity_timestamp_ct
+        description: Timestamp when the activity took place, in Central Time
+
+      - name: activity_distance
+        description: Total distance covered during the activity, in meters
+
+      - name: activity_duration_seconds
+        description: Total duration of the activity in seconds
+
+      - name: activity_duration_minutes
+        description: Total duration of the activity in minutes (rounded to two decimal places)
+
+      - name: activity_elevation_low
+        description: Lowest elevation recorded during the activity, in meters
+
+      - name: activity_elevation_high
+        description: Highest elevation recorded during the activity, in meters
+
+      - name: activity_avg_speed
+        description: Average speed of the activity in meters per second
+
+      - name: activity_max_speed
+        description: Maximum speed reached during the activity in meters per second
+
+      - name: calories_burned
+        description: Total calories burned during the activity
+
+      - name: calories_burned_per_minute
+        description: Average number of calories burned per minute during the activity
+
+      - name: max_heartrate
+        description: Maximum heart rate reached during the activity, in beats per minute
+
+      - name: average_heartrate
+        description: Average heart rate during the activity, in beats per minute
+
+      - name: refreshed_at
+        description: Timestamp when the data was most recently query'd
+
+      - name: activity_intensity_score
+        description: Weighted intensity score derived from multiple factors such as heart rate, calories per minute, total calories, and duration, adjusted by activity type
+
+      - name: activity_intensity_rank
+        description: Ranking of activity intensity for the dataset, where 1 is the lowest and higher numbers represent higher relative intensity

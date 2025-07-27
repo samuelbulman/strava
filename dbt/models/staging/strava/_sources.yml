@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+    - name: strava
+      description: Strava activity and athletes data sourced from the Strava API
+      tables:
+        - name: activities
+          description: Strava activities records
+        - name: athletes
+          description: Strava athlete (user) records
