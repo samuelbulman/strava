@@ -104,7 +104,7 @@ class Postgres:
             table_exists = self.cursor.fetchone()[0]
 
             if table_exists:
-                self._execute(f"DROP TABLE IF EXISTS {schema}.{table};")
+                self._execute(f"DROP TABLE IF EXISTS {schema}.{table} CASCADE;")
 
                 if log_actions:
                     print(f"Table '{schema}.{table}' dropped successfully.")
