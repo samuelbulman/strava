@@ -118,7 +118,7 @@ class Postgres:
             # Load DataFrame to table and commit transaction
             self._execute_insert_into_values_query(df, schema, table)
             self._commit()
-            
+
             if log_actions:
                 print(f"DataFrame loaded to table '{schema}.{table}' successfully.")
         
@@ -129,7 +129,21 @@ class Postgres:
         finally:
             self._disconnect()
 
-    
+
+    def table_exists(self, schema, table):
+        """Check if a table exists in the database"""
+
+        try:
+            self._connect()
+
+            self._execute(f"SELECT EXISTS (SELECT tablename FROM pg_tables WHERE schemaname = '{schema}' and tablename = '{table}');")
+
+            return self.cursor.fetchone()[0]
+
+        except Exception as e:
+            print(f"Error occurred: {e}")
+
+
     def _execute_create_table_query(self, df, schema, table):
         from decimal import Decimal
 
