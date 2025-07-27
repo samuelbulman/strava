@@ -1,2 +1,2 @@
 select *
-from analytics.activities;
+from analytics.calendar_activities;
