@@ -9,11 +9,11 @@ from typing import Dict, Any
 import pandas as pd
 from dotenv import load_dotenv
 from pprint import pprint
-from colorama import Fore, Style
 
 # Local imports
 from modules.postgres import Postgres
-from modules.google_sheets import GoogleSheets
+from modules.utils import log_prefix
+
 
 def inspect_response(
         client_id:str,
@@ -49,17 +49,17 @@ def fetch_strava_activities(
         if access_token:
             activities_data = strava_api_activities_response(access_token)
             activities = {
-                "activity_id": [],
-                "activity_name": [],
+                "id": [],
+                "name": [],
                 "athlete_id": [],
-                "activity_type": [],
-                "activity_timestamp": [],
-                "activity_distance": [],
-                "activity_duration_seconds": [],
-                "activity_elevation_high": [],
-                "activity_elevation_low": [],
-                "activity_avg_speed": [],
-                "activity_max_speed": [],
+                "type": [],
+                "created_at": [],
+                "distance": [],
+                "duration_seconds": [],
+                "elevation_high": [],
+                "elevation_low": [],
+                "avg_speed": [],
+                "max_speed": [],
                 "calories_burned": [],
                 "average_heartrate": [],
                 "max_heartrate": [],
@@ -69,24 +69,24 @@ def fetch_strava_activities(
 
             print(f"""{log_prefix(log_type='info')} {len(activities_data)} activities fetched from Strava API.
 {log_prefix(log_type='info')} {len(exclusion_activities)} activities will be excluded from import.
-{log_prefix(log_type='info')} {len(existing_activities['activity_id'])} activity records retrieved from Postgres.
-{log_prefix(log_type='info')} {len(activities_data) - len(existing_activities['activity_id']) - len(exclusion_activities)} new records will be imported.""")
+{log_prefix(log_type='info')} {len(existing_activities['id'])} activity records retrieved from Postgres.
+{log_prefix(log_type='info')} {len(activities_data) - len(existing_activities['id']) - len(exclusion_activities)} new records will be imported.""")
 
             for activity in activities_data:
                 if activity.get("id") in exclusion_activities:
                     continue
 
-                activities["activity_id"].append(activity.get("id"))
-                activities["activity_name"].append(activity.get("name"))
+                activities["id"].append(activity.get("id"))
+                activities["name"].append(activity.get("name"))
                 activities["athlete_id"].append(activity.get("athlete", {}).get("id", None))
-                activities["activity_type"].append(activity.get("type"))
-                activities["activity_timestamp"].append(activity.get("start_date_local"))
-                activities["activity_distance"].append(activity.get("distance"))
-                activities["activity_duration_seconds"].append(activity.get("elapsed_time"))
-                activities["activity_elevation_high"].append(activity.get("elev_high"))
-                activities["activity_elevation_low"].append(activity.get("elev_low"))
-                activities["activity_avg_speed"].append(activity.get("average_speed"))
-                activities["activity_max_speed"].append(activity.get("max_speed"))
+                activities["type"].append(activity.get("type"))
+                activities["created_at"].append(activity.get("start_date_local"))
+                activities["distance"].append(activity.get("distance"))
+                activities["duration_seconds"].append(activity.get("elapsed_time"))
+                activities["elevation_high"].append(activity.get("elev_high"))
+                activities["elevation_low"].append(activity.get("elev_low"))
+                activities["avg_speed"].append(activity.get("average_speed"))
+                activities["max_speed"].append(activity.get("max_speed"))
                 activities["average_heartrate"].append(activity.get("average_heartrate"))
                 activities["max_heartrate"].append(activity.get("max_heartrate"))
 
@@ -94,8 +94,8 @@ def fetch_strava_activities(
                 # To avoid rate limit errors, we can grab previously fetched calorie counts from postgres. if the current activity_id in the loop has not 
                 # yet been loaded to postgres, then we will hit the detailed activities endpoint to grab that information.
 
-                if activity.get("id") in existing_activities["activity_id"]:
-                    activities["calories_burned"].append(existing_activities["calories"][existing_activities["activity_id"].index(activity.get("id"))])
+                if activity.get("id") in existing_activities["id"]:
+                    activities["calories_burned"].append(existing_activities["calories"][existing_activities["id"].index(activity.get("id"))])
 
                 else:
                     print(f"{log_prefix(log_type='info')} New {activity.get('type')} activity detected: {activity.get('name')} on {activity.get('start_date_local')}")
@@ -183,18 +183,25 @@ def strava_api_detailed_activities_response(
 
 def fetch_existing_activity_ids() -> dict:
     """Retrieves Strava activities that have already been loaded to Postgres. Return value is a dictionary of activity id's and their respective calories count."""
+
     existing_activity_records = {
-        "activity_id": [],
+        "id": [],
         "calories": []
     }
 
     with Postgres() as psql:
-        columns, existing_activities = psql.query_postgres(sql_query="select distinct activity_id, calories_burned from strava.strava_activities;")
+        if psql.table_exists(schema="strava", table="activities"):
+            existing_activity_records = {
+                "id": [],
+                "calories": []
+            }
 
-    for row in existing_activities:
-        existing_activity_records["activity_id"].append(row[0])
-        existing_activity_records["calories"].append(row[1])
-    
+            _, existing_activities = psql.query_postgres(sql_query="select distinct id, calories_burned from strava.activities;")
+
+            for row in existing_activities:
+                existing_activity_records["id"].append(row[0])
+                existing_activity_records["calories"].append(row[1])
+            
     return existing_activity_records
         
 
@@ -220,8 +227,9 @@ def fetch_strava_athletes(
         if response.status_code == 200:
             athlete = response.json()
             user_dict = {
-                "athlete_id": [athlete["id"]],  #  this will need to be refactored when multiple athletes data is pulled in single run
-                "athlete_full_name": [athlete["firstname"]+" "+athlete["lastname"]]
+                "id": [athlete.get("id")],  #  this will need to be refactored when multiple athletes data is pulled in single run
+                "first_name": [athlete.get("firstname")],
+                "last_name": [athlete.get("lastname")]
             }
 
         return pd.DataFrame(data=user_dict, columns=[key for key in user_dict.keys()])
@@ -319,7 +327,7 @@ def load_strava_data_to_postgres(
             psql.load_dataframe_to_table(
                 df=strava_activities_df,
                 schema="strava",
-                table="strava_activities"
+                table="activities"
             )
             print(f"{log_prefix(log_type='info')} Successfully loaded strava activities data to Postgres!")
    
@@ -331,38 +339,12 @@ def load_strava_data_to_postgres(
             psql.load_dataframe_to_table(
                 df=strava_athletes_df,
                 schema="strava",
-                table="strava_athletes"
+                table="athletes"
             )
             print(f"{log_prefix(log_type='info')} Successfully loaded strava athletes data to Postgres!")
         
         except Exception as e:
             print(f"{log_prefix(log_type='error')} Error loading strava athletes data:\n\n{e}")
-
-
-def postgres_to_google_sheets(
-        sql_query:str,
-        google_sheet_spreadsheet_id:str,
-        google_sheet_worksheet_name:str,
-    ):
-
-    try:
-        with Postgres() as psql:
-            print(f"{log_prefix(log_type='info')} Querying postgres for Strava activities...")
-            strava_df = psql.query_postgres(sql_query=sql_query, return_df=True)
-            print(f"{log_prefix(log_type='info')} Strava activities retrieved!")
-
-        sheet = GoogleSheets(google_sheet_spreadsheet_id=google_sheet_spreadsheet_id)
-
-        print(f"{log_prefix(log_type='info')} Importing Strava data to google sheets...")
-        sheet.import_df_to_google_sheet(
-            dataframe=strava_df,
-            google_sheet_worksheet_name=google_sheet_worksheet_name,
-            clear_and_resize_sheet=True
-        )
-        print(f"{log_prefix(log_type='info')} Strava data imported!")
-    
-    except Exception as e:
-        print(f"{log_prefix(log_type='error')} Error importing to google sheets:\n\n{e}")
 
 
 def fetch_secrets() -> Dict[str, Any]:
@@ -372,61 +354,6 @@ def fetch_secrets() -> Dict[str, Any]:
 
     with open(f"{os.path.dirname(os.path.abspath(__file__))}{strava_secrets_path}") as secrets:
         return json.load(secrets)
-    
-
-def read_sql(file_path:str) -> str:
-    """
-    Returns the entire contents of a SQL file.
-
-    Parameters
-    ----------
-    file_path (str):
-    - The path to a SQL file
-    """
-
-    try:
-        with open(file_path, 'r') as file:
-            file_contents = file.read()
-        return file_contents
-    
-    except FileNotFoundError:
-        print(f"{log_prefix(log_type='error')} Error: File not found at {file_path}")
-        return None
-
-    except Exception as e:
-        print(f"{log_prefix(log_type='error')} An error occurred: {e}")
-        return None
-    
-def log_prefix(log_type: str) -> str:
-    """Returns a prefix for adding timne and type details to the scripts logs"""
-
-    formatted_log_time = time.strftime('%Y-%m-%d %H:%M:%S')
-
-    if log_type.upper() in ("START", "END"):
-        keyword_color = Fore.GREEN
-        dots_after_keyword = 5 if log_type.upper() == "START" else 7
-
-    elif log_type.upper() == 'INFO':
-        keyword_color = Fore.YELLOW
-        dots_after_keyword = 6
-
-    elif log_type.upper() == 'ERROR':
-        keyword_color = Fore.RED
-        dots_after_keyword = 5
-
-    else:
-        keyword_color = Fore.WHITE
-        dots_after_keyword = 5
-
-    dots_post_keyword = "." * dots_after_keyword
-
-    reset = Style.RESET_ALL
-
-    formatted_log_descriptor = f"[{keyword_color}{log_type.upper()}{reset}] {dots_post_keyword}" if log_type else ""
-
-    log_prefix = f"{formatted_log_time} {formatted_log_descriptor}"
-
-    return log_prefix
 
 
 if __name__ == "__main__":
@@ -434,7 +361,7 @@ if __name__ == "__main__":
 
     start_time = time.time()
     start_time_str = time.strftime("%Y-%m-%d %H:%M:%S")
-    print(f"{log_prefix(log_type='start')} SCRIPT INITIATED")
+    print(f"{log_prefix(log_type='start')} INGEST INITIATED")
     secrets = fetch_secrets()
     strava_client_id = secrets["client_id"]
     strava_client_secret = secrets["client_secret"]
@@ -448,15 +375,6 @@ if __name__ == "__main__":
       strava_client_secret=strava_client_secret
     )
 
-    file_name = "strava_activities.sql"
-    sql_query = read_sql(f"{os.getcwd()}/sql/{file_name}")
-
-    postgres_to_google_sheets(
-        sql_query=sql_query,
-        google_sheet_spreadsheet_id=os.getenv("target_spreadsheet_id"),
-        google_sheet_worksheet_name=os.getenv("target_worksheet_id")
-    )
-
     end_time = time.time()
     end_time_str = time.strftime("%Y-%m-%d %H:%M:%S")
-    print(f"{log_prefix(log_type='end')} SCRIPT COMPLETED - Finished running in {round(number=end_time - start_time, ndigits=2)} seconds.")
+    print(f"{log_prefix(log_type='end')} INGEST COMPLETED - Finished running in {round(number=end_time - start_time, ndigits=2)} seconds.")
