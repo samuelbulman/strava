@@ -8,7 +8,7 @@ This project is a tool to help Strava athletes programmatically access and store
 All calls to the Strava API require an `access_token` that defines the athlete and application making the API call. Registered Strava athletes can obtain an `access_token` by creating a Strava application [here](https://www.strava.com/settings/api). To learn about Stravas API, creating a Strava App, authenticating with OAuth 2.0, etc. please reference the [Strava Developer Docs](https://developers.strava.com/docs/getting-started/)
 
 ### Storage
-This project was designed to leverage Postgres and Google Sheets as storage solutions. You will ideally have access to a user that has write privilegs in a Postgres db instance. If you do not, please contribute/request a new db module to work with.
+This project was designed to leverage Postgres and Google Sheets as storage solutions. You will ideally have access to a user that has write privilegs in a Postgres db instance, but feel free to fork and start tailoring this to whatever you have at your personal disposal!
 
 ### Packages
 This project leverages third party Python packages. To prime your local environment _after_ cloning a local copy of this repository, it is recommended to create a virtual environment, activate it, and install package dependencies:
