@@ -17,3 +17,176 @@ This project leverages third party Python packages. To prime your local environm
 3. Install package dependencies: `pip install -r requirements.txt`
 
 In order to leverage the Google Sheets functionality, you will need to create a personal [Google Project](https://cloud.google.com/free?utm_source=google&utm_medium=cpc&utm_campaign=na-US-all-en-dr-bkws-all-all-trial-b-dr-1710134&utm_content=text-ad-none-any-DEV_c-CRE_665665924741-ADGP_Hybrid+%7C+BKWS+-+MIX+%7C+Txt-Google+Cloud-Google+Cloud+Free-KWID_43700081235769755-aud-2232802565252:kwd-299377062137&utm_term=KW_google+cloud+platform+free-ST_google+cloud+platform+free&gad_source=1&gclid=CjwKCAiA5Ka9BhB5EiwA1ZVtvADHUMj870DMiev5WFHJ1uVytuOJjTn3z1zulGEOll36koGiGKRCLxoCRlkQAvD_BwE&gclsrc=aw.ds&hl=en) for free and [create a service account](https://cloud.google.com/iam/docs/service-accounts-create) associated with your project, that can read from & write to the [Google Sheets API](https://developers.google.com/sheets/api/guides/concepts).
+
+If you do leverage a database or google sheets as a storage solution, you'll need to setup a .env file with your database connection details and/or google service account key details to authenticate to each service:
+
+```text
+host=
+port=
+db_name=
+user=
+pass=
+sa_path=
+target_spreadsheet_id=
+target_worksheet_id=
+```
+
+---
+
+## Project Structure
+
+```text
+.
+├── strava_export.py         # Extract data from Strava API
+├── strava_ingest.py         # Load flat file data into DuckDB/warehouse
+├── dbt/                     # dbt transformation project
+│   ├── models/              # dbt models (intermediate & marts)
+│   ├── macros/              # dbt macros (e.g. intensity logic)
+│   └── dbt_project.yml      # dbt configuration
+├── requirements.txt
+└── local_run__end_to_end.sh
+```
+
+---
+
+## dbt
+
+Once your raw data is loaded into your warehouse, use [dbt](https://docs.getdbt.com) to build transformations.
+
+### Setting Up dbt
+
+If you haven’t already:
+
+1. Install dbt:
+   ```bash
+   pip install dbt-core dbt-postgres  # specify your adapter of choice
+   ```
+
+2. Navigate to the dbt directory:
+   ```bash
+   cd dbt
+   ```
+
+3. To create your own dbt project from scratch (if starting fresh):
+   ```bash
+   dbt init my_project
+   ```
+   Follow [this guide](https://docs.getdbt.com/docs/building-a-dbt-project) for setup details.
+
+4. dbt run!:
+   ```bash
+   dbt deps      # install any dbt packages
+   dbt run       # build models
+   ```
+
+---
+
+### End-to-End Execution
+
+If you've successfully set up a database instance, connected to the Strava API, and established a working Google Sheets connection, you can run this data pipeline end-to-end by running the `local_run__end_to_end.sh` shell script available in the repo's root directory:
+
+```bash
+bash local_run__end_to_end.sh
+```
+
+This shell script runs the ingestion script, executes dbt transformations, and will export your newly refreshed and report-ready data to google sheets for reference in your BI layer!
+
+# Strava ETL
+
+This repo extracts and models data from the Strava API using Python and dbt. It's designed to help athletes and data nerds analyze their Strava activity history with greater flexibility.
+
+## Features
+
+- Extract activities from the Strava API
+- Save them as flat files for local inspection
+- Load data into a warehouse or DuckDB
+- Transform and analyze via [dbt](https://docs.getdbt.com)
+
+---
+
+## Requirements
+
+- Python 3.10+
+- `pip install -r requirements.txt`
+- A Strava Developer App (for `client_id` and `client_secret`)
+- `.env` file with the following:
+  ```bash
+  STRAVA_CLIENT_ID=your_id
+  STRAVA_CLIENT_SECRET=your_secret
+  STRAVA_REFRESH_TOKEN=your_token
+  ```
+
+---
+
+## ▶️ How to Run
+
+### End-to-End Execution
+
+```bash
+bash local_run__end_to_end.sh
+```
+
+This script handles:
+- Refreshing your access token
+- Downloading activities
+- Writing them to a flat file
+- Ingesting them to DuckDB or your data warehouse
+
+---
+
+## 🧪 Project Structure
+
+```text
+.
+├── strava_export.py         # Extract data from Strava API
+├── strava_ingest.py         # Load flat file data into DuckDB/warehouse
+├── dbt/                     # dbt transformation project
+│   ├── models/              # dbt models (intermediate & marts)
+│   ├── macros/              # dbt macros (e.g. intensity logic)
+│   └── dbt_project.yml      # dbt configuration
+├── requirements.txt
+└── local_run__end_to_end.sh
+```
+
+---
+
+## 📈 dbt Transformations
+
+Once your raw data is loaded into your warehouse, use [dbt](https://docs.getdbt.com) to build transformations.
+
+### How to Set Up dbt
+
+If you haven’t already:
+
+1. Install dbt:
+   ```bash
+   pip install dbt-core dbt-duckdb  # or your adapter of choice
+   ```
+
+2. Navigate to the dbt directory:
+   ```bash
+   cd dbt
+   ```
+
+3. Run your models:
+   ```bash
+   dbt deps      # install any dbt packages
+   dbt seed      # optional, if seeds are added
+   dbt run       # build models
+   dbt test      # run tests
+   dbt docs serve
+   ```
+
+4. To create your own dbt project from scratch (if starting fresh):
+   ```bash
+   dbt init my_project
+   ```
+   Follow [this guide](https://docs.getdbt.com/docs/building-a-dbt-project) for setup details.
+
+---
+
+## Contact
+
+Made with ❤️ by [@samuelbulman](https://github.com/samuelbulman)
+
+Pull requests and ideas welcome!
