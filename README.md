@@ -86,7 +86,7 @@ If you haven’t already:
 If you've successfully set up a database instance, connected to the Strava API, and established a working Google Sheets connection, you can run this data pipeline end-to-end by running the `local_run__end_to_end.sh` shell script available in the repo's root directory:
 
 ```bash
-bash local_run__end_to_end.sh
+./local_run__end_to_end.sh
 ```
 
 This shell script runs the ingestion script, executes dbt transformations, and will export your newly refreshed and report-ready data to google sheets for reference in your BI layer!
