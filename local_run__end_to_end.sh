@@ -1,14 +1,34 @@
 #!/bin/bash
 
+start_time=$(date +%s)
+
+echo "------------------------------------------------------------------------------------------------------"
+echo "  Executing Strava data pipeline ..."
+echo "------------------------------------------------------------------------------------------------------"
+
 # ingest data to postgres
-source venv/bin/activate && python3 strava_ingest.py
+source venv/bin/activate && python3 strava_data_ingress.py
 deactivate
+
+echo "------------------------------------------------------------------------------------------------------"
+echo "  Strava ingress finished. Executing dbt run ..."
+echo "------------------------------------------------------------------------------------------------------"
 
 # run lightweight data transformations
 cd dbt && source venv/bin/activate
 dbt run
 deactivate
 
+echo "------------------------------------------------------------------------------------------------------"
+echo "  dbt run finished. Executing Strava egress ..."
+echo "------------------------------------------------------------------------------------------------------"
+
 # export refreshed analytics data set to google sheets
 cd .. && source venv/bin/activate
-python3 strava_export.py
+python3 strava_data_egress.py
+
+end_time=$(date +%s)
+elapsed=$(( end_time - start_time ))
+echo "------------------------------------------------------------------------------------------------------"
+printf "  All tasks complete. Finished running in %d seconds.\n" "$elapsed"
+echo "------------------------------------------------------------------------------------------------------"
