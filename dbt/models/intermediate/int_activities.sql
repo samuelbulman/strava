@@ -31,7 +31,7 @@ select
 	,calories_burned / (activity_duration_seconds / 60) as calories_burned_per_minute
 	,max_heartrate
 	,average_heartrate
-    ,current_timestamp as refreshed_at
+    ,current_timestamp::timestamp as refreshed_at_ct
 	,case
 		when activity_type in ('Swim', 'Surfing') then 1.4
 		when activity_type = 'Run' then 1.3

@@ -67,8 +67,8 @@ models:
       - name: average_heartrate
         description: Average heart rate during the activity, in beats per minute
 
-      - name: refreshed_at
-        description: Timestamp when the data was most recently query'd
+      - name: refreshed_at_ct
+        description: Timestamp when the data was most recently query'd, in central time
 
       - name: activity_intensity_score
         description: Weighted intensity score derived from multiple factors such as heart rate, calories per minute, total calories, and duration, adjusted by activity type

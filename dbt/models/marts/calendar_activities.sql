@@ -24,7 +24,7 @@ select
 	,calories_burned_per_minute
 	,max_heartrate
 	,average_heartrate
-    ,refreshed_at
+    ,refreshed_at_ct
 /* postgres should really let us reference calculated columns to dry this query up */
 /* calculate the final intensity score for an activity, paying weighted respects to the individual components of an activity */
     ,round(
