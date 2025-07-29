@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
     start_time = time.time()
     start_time_str = time.strftime("%Y-%m-%d %H:%M:%S")
-    print(f"{log_prefix(log_type='start')} EXPORT INITIATED")
+    print(f"{log_prefix(log_type='start')} EGRESS INITIATED")
 
     file_name = "calendar_activities.sql"
     sql_query = read_sql(f"{os.getcwd()}/sql/{file_name}")
@@ -56,4 +56,4 @@ if __name__ == "__main__":
 
     end_time = time.time()
     end_time_str = time.strftime("%Y-%m-%d %H:%M:%S")
-    print(f"{log_prefix(log_type='end')} EXPORT COMPLETED - Finished running in {round(number=end_time - start_time, ndigits=2)} seconds.")
+    print(f"{log_prefix(log_type='end')} EGRESS COMPLETED - Finished running in {round(number=end_time - start_time, ndigits=2)} seconds.")
