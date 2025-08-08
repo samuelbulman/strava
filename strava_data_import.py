@@ -361,7 +361,7 @@ if __name__ == "__main__":
 
     start_time = time.time()
     start_time_str = time.strftime("%Y-%m-%d %H:%M:%S")
-    print(f"{log_prefix(log_type='start')} INGRESS INITIATED")
+    print(f"{log_prefix(log_type='start')} IMPORT INITIATED")
     secrets = fetch_secrets()
     strava_client_id = secrets["client_id"]
     strava_client_secret = secrets["client_secret"]
@@ -377,4 +377,4 @@ if __name__ == "__main__":
 
     end_time = time.time()
     end_time_str = time.strftime("%Y-%m-%d %H:%M:%S")
-    print(f"{log_prefix(log_type='end')} INGRESS COMPLETED - Finished running in {round(number=end_time - start_time, ndigits=2)} seconds.")
+    print(f"{log_prefix(log_type='end')} IMPORT COMPLETED - Finished running in {round(number=end_time - start_time, ndigits=2)} seconds.")
