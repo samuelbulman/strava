@@ -69,7 +69,7 @@ def fetch_strava_activities(
 
             print(f"""{log_prefix(log_type='info')} {len(activities_data)} activities fetched from Strava API.
 {log_prefix(log_type='info')} {len(exclusion_activities)} activities will be excluded from import.
-{log_prefix(log_type='info')} {len(existing_activities['id'])} activity records retrieved from Postgres.
+{log_prefix(log_type='info')} {len(existing_activities['id'])} existing activity records retrieved from Postgres.
 {log_prefix(log_type='info')} {len(activities_data) - len(existing_activities['id']) - len(exclusion_activities)} new records will be imported.""")
 
             for activity in activities_data:
@@ -368,7 +368,7 @@ if __name__ == "__main__":
     token_file_path = secrets["token_file_path"]
     exclusion_activities = [14944301862]
 
-    # inspect_json(client_id=strava_client_id, client_secret=strava_client_secret)
+    # inspect_response(client_id=strava_client_id, client_secret=strava_client_secret)
 
     load_strava_data_to_postgres(
       strava_client_id=strava_client_id,
