@@ -12,6 +12,7 @@ with date_spine as (
 select
 	date_day::date as date_day
 	,to_char(date_day, 'Day') as day_name
+	,date_part('doy', date_day) as day_of_year
 	,date_trunc('month', date_day)::date as month_start
 	,(date_trunc('month', date_day) + interval '1 month' - interval '1 day')::date as month_end
 	,date_part('month', date_day) as month_int
