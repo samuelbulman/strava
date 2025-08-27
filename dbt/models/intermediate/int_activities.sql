@@ -18,8 +18,11 @@ select
 		else activity_type
 	end as bro_split_bucket
 	,activity_type = 'WeightTraining' as is_weight_training_activity
-	,replace(replace(activity_created_at, 'T', ' '), 'Z', '')::timestamp as activity_timestamp_ct
-	,replace(replace(activity_created_at, 'T', ' '), 'Z', '')::date as activity_date
+	,activity_timestamp_ct
+	,activity_date
+	,date_part('hour', activity_timestamp_ct)::int + ((100::float/60::float) * date_part('minute', activity_timestamp_ct) * .01) as activity_start_hour_scaled
+	,activity_timestamp_ct + (round(activity_duration_seconds / 60.00, 2) * (interval '1 minute')) as activity_end_timestamp_ct
+	,date_part('hour', (activity_timestamp_ct + (round(activity_duration_seconds / 60.00, 2) * (interval '1 minute')))) as activity_end_hour
 	,activity_distance
 	,activity_duration_seconds
 	,round(activity_duration_seconds / 60.00, 2) as activity_duration_minutes
@@ -47,6 +50,7 @@ select
   	,least(greatest((max_heartrate - 100) / 100.0, 0), 1.0) * 100 as scaled_max_hr
   	,least(round(activity_duration_seconds / 60.00, 2) / 90.0, 1.0) * 100 as scaled_duration
   	,least(calories_burned / 1000.0, 1.0) * 100 as scaled_total_calories
+	,row_number() over (order by activity_timestamp_ct) as activity_number
 from {{ ref('stg_strava__activities') }} activities
 inner join {{ ref('stg_strava__athletes') }} athletes
 	on activities.athlete_id = athletes.athlete_id
