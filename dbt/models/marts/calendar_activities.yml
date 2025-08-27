@@ -5,7 +5,7 @@ exposures:
     type: dashboard
     url: https://public.tableau.com/app/profile/sam.bulman5450/vizzes
     owner:
-      name: @sam
+      name: sam
 
     depends_on:
       - ref('int_activities')

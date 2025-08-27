@@ -4,6 +4,8 @@
 {% set weight_total_calories = 0.3 %}
 {% set weight_duration = 0.05 %}
 
+{% set is_milestone_activity = "activity_number in (10,50,100,150,200,250,300,300,400,500,750,1000,1500,2000)" %}
+
 with activities as (
     select
         activity_id
@@ -13,6 +15,9 @@ with activities as (
         ,is_weight_training_activity
         ,activity_timestamp_ct
         ,activity_date
+        ,activity_start_hour_scaled
+        ,activity_end_timestamp_ct
+        ,activity_end_hour
         ,activity_distance
         ,activity_duration_seconds
         ,activity_duration_minutes
@@ -49,11 +54,13 @@ with activities as (
             + ({{weight_duration}} * scaled_duration))::int
             * activity_type_multiplier, 1) desc
         ) as activity_grouping_intensity_rank
+        ,case when {{ is_milestone_activity }} then activity_number||'th activity logged!' end as milestone_activity
     from {{ ref('int_activities') }}
 )
 select
     cal.date_day
     ,cal.day_name
+    ,cal.day_of_year
     ,activities.*
 from {{ ref('calendar') }} cal
 left join activities
