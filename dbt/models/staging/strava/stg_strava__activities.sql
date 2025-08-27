@@ -3,7 +3,8 @@ select
     ,name as activity_name
     ,athlete_id
     ,type as activity_type
-    ,created_at as activity_created_at
+    ,replace(replace(created_at, 'T', ' '), 'Z', '')::timestamp as activity_timestamp_ct
+	,replace(replace(created_at, 'T', ' '), 'Z', '')::date as activity_date
     ,distance as activity_distance
     ,duration_seconds as activity_duration_seconds
     ,elevation_high as activity_elevation_low
