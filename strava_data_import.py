@@ -91,8 +91,8 @@ def fetch_strava_activities(
                 activities["max_heartrate"].append(activity.get("max_heartrate"))
 
                 # Annoyingly, we have to hit a separate, detailed-activities endpoint to fetch how many calories were burned during a workout :roll-eyes:
-                # To avoid rate limit errors, we can grab previously fetched calorie counts from postgres. if the current activity_id in the loop has not 
-                # yet been loaded to postgres, then we will hit the detailed activities endpoint to grab that information.
+                # To avoid rate limit errors, we can grab calorie counts from activities that have already been loaded to postgres. 
+                # if the current activity_id in the loop hasn't yet been loaded to postgres, THEN we'll hit the detailed activities endpoint to grab the new activities calories burned.
 
                 if activity.get("id") in existing_activities["id"]:
                     activities["calories_burned"].append(existing_activities["calories"][existing_activities["id"].index(activity.get("id"))])
@@ -126,15 +126,17 @@ def strava_api_activities_response(access_token:str) -> dict:
     - fill
     """
 
+    # TODO: update to only pull the first n pages worth of activities rather than looping through all pages, to avoid rate limits when the total number of activities grows too large
+
     activities = []
     page = 1
-    per_page = 50
+    activities_per_page = 50
     headers = {"Authorization": f"Bearer {access_token}"}
     url = "https://www.strava.com/api/v3/athlete/activities"
 
 
     while True:
-        params = {'per_page': per_page, 'page': page}
+        params = {'per_page': activities_per_page, 'page': page}
         response = requests.get(url=url, headers=headers, params=params)
         json_response = response.json()
 
@@ -144,7 +146,6 @@ def strava_api_activities_response(access_token:str) -> dict:
 
         if response.status_code == 200:
             activities.extend(json_response)
-            
         else:
             print(f"{log_prefix(log_type='error')} Error fetching data: {response.status_code}, {response.json()}")
             break
