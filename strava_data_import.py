@@ -13,15 +13,16 @@ from pprint import pprint
 # Local imports
 from modules.postgres import Postgres
 from modules.utils import log_prefix
+from modules.send_email import send_email
 
 
 def inspect_response(
-        client_id:str,
-        client_secret:str
-    ):
+    client_id:str,
+    client_secret:str
+):
     """Call adhoc when you want to print/inspect the response of the Strava API"""
     try:
-        access_token = access_token_workflow(
+        access_token = get_access_token(
             client_id=client_id,
             client_secret=client_secret
         )
@@ -35,13 +36,13 @@ def inspect_response(
 
 
 def fetch_strava_activities(
-        client_id:str,
-        client_secret:str
-    ) -> pd.DataFrame:
+    client_id:str,
+    client_secret:str
+) -> pd.DataFrame:
     """Returns a Pandas DataFrame containing a strava athletes activity data from the activities endpoint(s)."""
 
     try:
-        access_token = access_token_workflow(
+        access_token = get_access_token(
             client_id=client_id,
             client_secret=client_secret
         )
@@ -156,9 +157,9 @@ def strava_api_activities_response(access_token:str) -> dict:
 
 
 def strava_api_detailed_activities_response(
-        access_token:str,
-        activity_id:int=None,
-    ) -> dict:
+    access_token:str,
+    activity_id:int=None,
+) -> dict:
     """
     Makes a request to Strava's detailed activities endpoint and returns a json response
     json response containing extrra information for an individual activity if successful.
@@ -207,12 +208,12 @@ def fetch_existing_activity_ids() -> dict:
         
 
 def fetch_strava_athletes(
-        client_id:str,
-        client_secret:str
-    ) -> pd.DataFrame:
+    client_id:str,
+    client_secret:str
+) -> pd.DataFrame:
     """Returns a Pandas DataFrame containing user strava athlete data from the athlete endpoint."""
 
-    access_token = access_token_workflow(
+    access_token = get_access_token(
         client_id=client_id,
         client_secret=client_secret
     )
@@ -236,19 +237,19 @@ def fetch_strava_athletes(
         return pd.DataFrame(data=user_dict, columns=[key for key in user_dict.keys()])
 
 
-def access_token_workflow(
-        client_id:str,
-        client_secret:str,
-    ) -> str:
+def get_access_token(
+    client_id:str,
+    client_secret:str,
+) -> str:
     """Returns a non-expired Strava Access token for API authentication."""
 
     # first, load locally stored strava access and refresh tokens:
     token_data = load_local_token_data()
 
     # next up, set the access_token. 
-    # check if the most recently pulled token has expired. 
-    # refresh it and save locally if so, otherwise, use the current token
-    # and make a request to strava's activities endpoint:
+    # check if the most recently pulled token has expired.
+    # refresh it and save locally if so. otherwise, use the current token
+    # so we can make requests to strava's api endpoints.
 
     if token_data["expires_at"] < time.time():
         response = requests.post(
@@ -282,9 +283,9 @@ def load_local_token_data() -> Dict[str, Any]:
 
 
 def save_token_data_locally(
-        token_file_path:str,
-        token_data:dict
-    ):
+    token_file_path:str,
+    token_data:dict
+):
     """Save Strava Access & Refresh tokens locally so tokens persist beyond script completion."""
 
     with open(token_file_path, "w") as token_file:
@@ -293,11 +294,11 @@ def save_token_data_locally(
         print(f"{log_prefix(log_type='info')} Tokens saved successfully!")
 
 
-def load_strava_data_to_postgres(
-        strava_client_id:str,
-        strava_client_secret:str
-    ):
-    """Loads Strava source data to target Postgres table."""
+def load_strava_activities_to_postgres(
+    strava_client_id:str,
+    strava_client_secret:str
+):
+    """Loads Strava activities data to target Postgres table."""
     
     try:
         print(f"{log_prefix(log_type='info')} Fetching strava activities data...")
@@ -310,6 +311,28 @@ def load_strava_data_to_postgres(
     except Exception as e:
         print(f"{log_prefix(log_type='error')} Error fetching strava activities data:\n\n{e}")
 
+    with Postgres() as psql:
+        try:
+            pre_import_activity_count = len(psql.query_postgres(sql_query="select count(distinct id) from strava.activities;", return_df=True))
+            print(f"{log_prefix(log_type='info')} Loading strava activities data to Postgres...")
+            psql.load_dataframe_to_table(
+                df=strava_activities_df,
+                schema="strava",
+                table="activities"
+            )
+            post_import_activity_count = len(psql.query_postgres(sql_query="select count(distinct id) from strava.activities;", return_df=True))
+            print(f"{log_prefix(log_type='info')} Successfully loaded strava activities data to Postgres!")
+            return post_import_activity_count - pre_import_activity_count
+   
+        except Exception as e:
+            print(f"{log_prefix(log_type='error')} Error loading strava activities data:\n\n{e}")
+
+
+def load_strava_athletes_to_postgres(
+    strava_client_id:str,
+    strava_client_secret:str
+):
+    """Loads Strava athletes data to target Postgres table."""
     try:
         print(f"{log_prefix(log_type='info')} Fetching strava athletes data...")
         strava_athletes_df = fetch_strava_athletes(
@@ -320,21 +343,8 @@ def load_strava_data_to_postgres(
     
     except Exception as e:
         print(f"{log_prefix(log_type='error')} Error fetching strava athletes data:\n\n{e}")
-
+        
     with Postgres() as psql:
-        
-        try:
-            print(f"{log_prefix(log_type='info')} Loading strava activities data to Postgres...")
-            psql.load_dataframe_to_table(
-                df=strava_activities_df,
-                schema="strava",
-                table="activities"
-            )
-            print(f"{log_prefix(log_type='info')} Successfully loaded strava activities data to Postgres!")
-   
-        except Exception as e:
-            print(f"{log_prefix(log_type='error')} Error loading strava activities data:\n\n{e}")
-        
         try:
             print(f"{log_prefix(log_type='info')} Loading strava athletes data to Postgres...")
             psql.load_dataframe_to_table(
@@ -351,7 +361,7 @@ def load_strava_data_to_postgres(
 def fetch_secrets() -> Dict[str, Any]:
     """Returns a JSON object containing user-specific Strava secrets stored locally."""
 
-    strava_secrets_path = "/.secrets/.strava_secrets.json"
+    strava_secrets_path = os.getenv("strava_secrets_path")
 
     with open(f"{os.path.dirname(os.path.abspath(__file__))}{strava_secrets_path}") as secrets:
         return json.load(secrets)
@@ -371,11 +381,20 @@ if __name__ == "__main__":
 
     # inspect_response(client_id=strava_client_id, client_secret=strava_client_secret)
 
-    load_strava_data_to_postgres(
+    new_activities_count = load_strava_activities_to_postgres(
       strava_client_id=strava_client_id,
       strava_client_secret=strava_client_secret
     )
 
     end_time = time.time()
     end_time_str = time.strftime("%Y-%m-%d %H:%M:%S")
-    print(f"{log_prefix(log_type='end')} IMPORT COMPLETED - Finished running in {round(number=end_time - start_time, ndigits=2)} seconds.")
+    run_time = round(number=end_time - start_time, ndigits=2)
+    print(f"{log_prefix(log_type='end')} IMPORT COMPLETED - Finished running in {run_time} seconds.")
+
+    send_email(
+        sender_email=os.getenv("shmuel_bot_email"),
+        sender_password=os.getenv("shmuel_bot_email_password"),
+        to_emails=[os.getenv("internal_email")],
+        subject=f"Strava Import: {time.strftime('%Y-%m-%d')}",
+        body=f"New Strava data has been loaded to Postgres!\n\n{new_activities_count} activities were imported. Total job runtime: {run_time} seconds."
+    )
