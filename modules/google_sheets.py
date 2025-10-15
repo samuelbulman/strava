@@ -45,6 +45,16 @@ class GoogleSheets:
         self.spreadsheet = self.google_client.open_by_key(google_sheet_spreadsheet_id)
 
 
+    def _enter_worksheet(self, google_sheet_worksheet_name:str):
+        """Enter the target Google Sheets spreadsheet and further enter a target worksheet, or create it if it does not already exist."""
+
+        try:
+            self.sheet = self.spreadsheet.worksheet(google_sheet_worksheet_name)
+
+        except gspread.exceptions.WorksheetNotFound:
+            self.sheet = self.spreadsheet.add_worksheet(title=google_sheet_worksheet_name, rows="100", cols="24")
+
+
     def import_df_to_google_sheet(
             self,
             dataframe:pd.DataFrame,
@@ -125,16 +135,6 @@ class GoogleSheets:
         self.contents_df.dropna(how="all")
 
         return self.contents_df
-    
-
-    def _enter_worksheet(self, google_sheet_worksheet_name:str):
-        """Enter the target Google Sheets spreadsheet and further enter a target worksheet, or create it if it does not already exist."""
-
-        try:
-            self.sheet = self.spreadsheet.worksheet(google_sheet_worksheet_name)
-
-        except gspread.exceptions.WorksheetNotFound:
-            self.sheet = self.spreadsheet.add_worksheet(title=google_sheet_worksheet_name, rows="100", cols="24")
 
 
     def delete_sheet(self, google_sheet_worksheet_name):
