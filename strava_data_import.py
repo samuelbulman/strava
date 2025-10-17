@@ -115,7 +115,7 @@ def fetch_strava_activities(
                     detailed_activity_response = strava_api_detailed_activities_response(access_token, activity_id=activity.get("id"))
                     activities["calories_burned"].append(detailed_activity_response.get("calories"))
                     logger.debug("New Activity Detected.", extra={
-                        "new_activity_log_formatted": f"{new_activity_counter}. {activity.get('name')}:\n - Type  ==>  {activity.get('type')}:\n - Recorded at  ==>  {activity.get('start_date_local')}:\n - Calories Burned  ==>  {detailed_activity_response.get('calories')}",
+                        "new_activity_log_formatted": f"{'=' * 27}\n{new_activity_counter}. {activity.get('name')}\n{'=' * 27}\n - Workout Type:  {activity.get('type')}\n - Recorded At:  {activity.get('start_date_local')}\n - Calories Burned:  {detailed_activity_response.get('calories')}\n",
                     })
             
             # Convert dict to Pandas dataframe and set all NaN values to None so Postgres correctly interprets these as nulls
@@ -442,7 +442,6 @@ if __name__ == "__main__":
 {new_records_to_process} new activities were processed:
 
 {new_activities_formatted}
-
 Total runtime: {run_time} seconds 🚀"""
     
     else:
