@@ -2,6 +2,9 @@
 
 start_time=$(date +%s)
 
+# force system to change into the directory that it's stored in
+cd "$(dirname "$0")"
+
 echo "------------------------------------------------------------------------------------------------------"
 echo "  Executing Strava import ..."
 echo "------------------------------------------------------------------------------------------------------"
