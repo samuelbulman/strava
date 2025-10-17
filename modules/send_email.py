@@ -108,8 +108,4 @@ def send_email(
         logger.exception(error_msg)  # Logs traceback
 
     finally:
-        try:
-            server.quit()
-
-        except Exception:
-            pass  # Ignore quit errors
+        server.quit()
