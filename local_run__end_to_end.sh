@@ -2,7 +2,7 @@
 
 start_time=$(date +%s)
 
-# force system to change into the directory that it's stored in
+# force system to enter the directory this script located in
 cd "$(dirname "$0")"
 
 echo "------------------------------------------------------------------------------------------------------"
