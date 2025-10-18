@@ -13,6 +13,7 @@ import pandas as pd
 from dotenv import load_dotenv
 
 # Local imports
+from modules.schemas import StravaActivity
 from modules.postgres import Postgres
 from modules.send_email import send_email
 
@@ -56,22 +57,11 @@ def fetch_strava_activities(
 
         if access_token:
             activities_data = strava_api_activities_response(access_token)
-            activities = {
-                "id": [],
-                "name": [],
-                "athlete_id": [],
-                "type": [],
-                "created_at": [],
-                "distance": [],
-                "duration_seconds": [],
-                "elevation_high": [],
-                "elevation_low": [],
-                "avg_speed": [],
-                "max_speed": [],
-                "calories_burned": [],
-                "average_heartrate": [],
-                "max_heartrate": [],
-            }
+            activities = []
+
+            for activity in activities_data:
+                if activity.get("id") in exclusion_activities:
+                    continue
 
             existing_activities = fetch_existing_activity_ids()
 
@@ -89,37 +79,42 @@ def fetch_strava_activities(
                 if activity.get("id") in exclusion_activities:
                     continue
 
-                activities["id"].append(activity.get("id"))
-                activities["name"].append(activity.get("name"))
-                activities["athlete_id"].append(activity.get("athlete", {}).get("id", None))
-                activities["type"].append(activity.get("type"))
-                activities["created_at"].append(activity.get("start_date_local"))
-                activities["distance"].append(activity.get("distance"))
-                activities["duration_seconds"].append(activity.get("elapsed_time"))
-                activities["elevation_high"].append(activity.get("elev_high"))
-                activities["elevation_low"].append(activity.get("elev_low"))
-                activities["avg_speed"].append(activity.get("average_speed"))
-                activities["max_speed"].append(activity.get("max_speed"))
-                activities["average_heartrate"].append(activity.get("average_heartrate"))
-                activities["max_heartrate"].append(activity.get("max_heartrate"))
+                activity_record = {
+                    "id": activity.get("id"),
+                    "name": activity.get("name"),
+                    "athlete_id": activity.get("athlete", {}).get("id"),
+                    "type": activity.get("type"),
+                    "created_at": activity.get("start_date_local"),
+                    "distance": activity.get("distance"),
+                    "duration_seconds": activity.get("elapsed_time"),
+                    "elevation_high": activity.get("elev_high"),
+                    "elevation_low": activity.get("elev_low"),
+                    "avg_speed": activity.get("average_speed"),
+                    "max_speed": activity.get("max_speed"),
+                    "average_heartrate": activity.get("average_heartrate"),
+                    "max_heartrate": activity.get("max_heartrate"),
+                }
 
                 # Annoyingly, we have to hit a separate, detailed-activities endpoint to fetch how many calories were burned during a workout :roll-eyes:
                 # To avoid rate limit errors, we can grab calorie counts from activities that have already been loaded to postgres. 
                 # if the current activity_id in the loop hasn't yet been loaded to postgres, THEN we'll hit the detailed activities endpoint to grab the new activities calories burned.
 
                 if activity.get("id") in existing_activities["id"]:
-                    activities["calories_burned"].append(existing_activities["calories"][existing_activities["id"].index(activity.get("id"))])
+                    activity_record["calories_burned"] = existing_activities["calories"][existing_activities["id"].index(activity.get("id"))]
 
                 else:
                     new_activity_counter += 1
                     detailed_activity_response = strava_api_detailed_activities_response(access_token, activity_id=activity.get("id"))
-                    activities["calories_burned"].append(detailed_activity_response.get("calories"))
+                    activity_record["calories_burned"] = detailed_activity_response.get("calories")
                     logger.debug("New Activity Detected.", extra={
                         "new_activity_log_formatted": f"{'=' * 27}\n{new_activity_counter}. {activity.get('name')}\n{'=' * 27}\n - Workout Type:  {activity.get('type')}\n - Recorded At:  {activity.get('start_date_local')}\n - Calories Burned:  {detailed_activity_response.get('calories')}\n",
                     })
+                
+                valid_strava_activity = StravaActivity(**activity_record)
+                activities.append(valid_strava_activity.model_dump())
             
-            # Convert dict to Pandas dataframe and set all NaN values to None so Postgres correctly interprets these as nulls
-            df = pd.DataFrame(data=activities, columns=[key for key in activities.keys()])
+            # set all NaN values to None so Postgres correctly interprets these as nulls
+            df = pd.DataFrame(activities) # Additional check to ensure no NaN values remain
             df = df.astype(object) 
             df = df.where(pd.notna(df), None)
 
@@ -427,9 +422,15 @@ if __name__ == "__main__":
     for record in log_records:
         if hasattr(record, "new_records_to_process"):
             new_records_to_process = record.new_records_to_process
+            if new_records_to_process == 0:
+                processed_activity_summary = "No new activities were processed 👎 get some movement in today!"
+            else:
+                processed_activity_summary = f"{new_records_to_process} new activity was processed:" if new_records_to_process == 1 else f"{new_records_to_process} new activities were processed:"
+        
         if hasattr(record, "new_activity_log_formatted"):
             new_activity_log = record.new_activity_log_formatted
             new_activities_formatted += (new_activity_log + "\n")
+        
         if record.levelname == "error":
             error_logs += (" - " + memory_handler.format(record) + "\n\n")
 
@@ -439,7 +440,7 @@ if __name__ == "__main__":
         email_subject = f"Successful Strava Import 💯 // {time.strftime('%Y-%m-%d')}"
         email_body = f"""Strava import ran successfully at {time.strftime('%Y-%m-%d %H:%M:%S')}
 
-{new_records_to_process} new activities were processed:
+{processed_activity_summary}
 
 {new_activities_formatted}
 Total runtime: {run_time} seconds 🚀"""
