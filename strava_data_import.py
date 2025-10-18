@@ -114,7 +114,7 @@ def fetch_strava_activities(
                 activities.append(valid_strava_activity.model_dump())
             
             # set all NaN values to None so Postgres correctly interprets these as nulls
-            df = pd.DataFrame(activities)# Additional check to ensure no NaN values remain
+            df = pd.DataFrame(activities) # Additional check to ensure no NaN values remain
             df = df.astype(object) 
             df = df.where(pd.notna(df), None)
 
