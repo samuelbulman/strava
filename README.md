@@ -42,8 +42,9 @@ target_worksheet_id=
 │   ├── macros/              # dbt macros (e.g. intensity logic)
 │   └── dbt_project.yml      # dbt configuration
 |── pipeline/
-|   ├── strava_export.py      # Load data to Google Sheets
-|   ├── strava_ingest.py     # Load flat file data into database/warehouse
+|   ├── utilities/           # Internal python packages
+|   ├── strava_export.py     # Load data to Google Sheets
+|   └── strava_ingest.py     # Load flat file data into database/warehouse
 └── local_run__end_to_end.sh
 ```
 
