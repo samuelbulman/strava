@@ -2,10 +2,13 @@
 import json
 import os
 from dotenv import load_dotenv
+import logging
 
 # Third party imports
 import psycopg2
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 class Postgres:
     """
@@ -43,7 +46,6 @@ class Postgres:
         self._disconnect()
 
     
-
     def query_postgres(
             self,
             sql_query:str,
@@ -64,28 +66,27 @@ class Postgres:
         """
 
         self._connect()
-
         self._execute(sql_query)
+        logger.debug(f"Rows returned: {self.cursor.rowcount}")
         
         self.columns = [desc[0] for desc in self.cursor.description]
-
         self.data = self.cursor.fetchall()
-
         self._disconnect()
 
         if return_df:
+            logger.debug(f"Returning dataframe")
             return pd.DataFrame(data=self.data, columns=self.columns)
     
         else:
-            return self.columns, self.data
+            logger.debug(f"Returning iterable")
+            return (self.columns, self.data)
                
         
     def load_dataframe_to_table(
             self,
             df:pd.DataFrame, 
             schema:str,
-            table:str,
-            log_actions:bool = False
+            table:str
         ):
         """
         This function drops and rebuilds a specified table with data from a given DataFrame.
@@ -93,7 +94,8 @@ class Postgres:
         Parameters
         ----------
             df (pd.DataFrame): A DataFrame to load data to Redshift.
-            destination_table (str): The name of the table to load the DataFrame to.
+            schema (str): The target schema of the target table.
+            table (str): The name of the table to load the DataFrame to.
         """
         
         try:
@@ -105,26 +107,20 @@ class Postgres:
 
             if table_exists:
                 self._execute(f"DROP TABLE IF EXISTS {schema}.{table} CASCADE;")
-
-                if log_actions:
-                    print(f"Table '{schema}.{table}' dropped successfully.")
+                logger.debug(f"Table '{schema}.{table}' dropped successfully.")
 
             # Create destination table - potentially revisit this to leverage SHOW TABLE statement to generated CREATE TABLE statement if we know the dataframe structure will not change over time
             self._execute_create_table_query(df, schema, table)
-
-            if log_actions:
-                print(f"Table '{schema}.{table}' created successfully.")
+            logger.debug(f"Table '{schema}.{table}' created successfully.")
 
             # Load DataFrame to table and commit transaction
             self._execute_insert_into_values_query(df, schema, table)
             self._commit()
-
-            if log_actions:
-                print(f"DataFrame loaded to table '{schema}.{table}' successfully.")
+            logger.debug(f"DataFrame loaded to table '{schema}.{table}' successfully.")
         
         except Exception as e:
             self._rollback()
-            print(f"Error occurred: {e}")
+            logger.error(f"Error occurred: {e}")
         
         finally:
             self._disconnect()
@@ -145,6 +141,8 @@ class Postgres:
 
 
     def _execute_create_table_query(self, df, schema, table):
+        # TODO: while this is nice for creating new tables that we don't know the schema definitions of up front, it'd be convenient
+        # to simply to pass a .sql file with a create table statement pre-defined in it to really ensure a precise schema definition.
         from decimal import Decimal
 
         column_definitions = []
@@ -259,6 +257,7 @@ class Postgres:
         )
 
         self.cursor = self.conn.cursor()
+        logger.debug(f"Connected to {self.db_name} Postgres DB")
     
     
     def _disconnect(self):
@@ -267,6 +266,7 @@ class Postgres:
             self.cursor.close()
         if self.conn:
             self.conn.close()
+        logger.debug(f"Disconnected from {self.db_name}  Postgres DB")
 
     
     def _commit(self):
