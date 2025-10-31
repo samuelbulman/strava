@@ -39,8 +39,9 @@ models:
     marts:
       materialized: table
 
-    intermediate:
-      materialized: ephemeral
-    
     staging:
+      materialized: table
+    
+    sources:
       schema: sources
+      materialized: view

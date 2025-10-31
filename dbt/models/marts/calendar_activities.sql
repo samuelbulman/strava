@@ -55,7 +55,7 @@ with activities as (
             * activity_type_multiplier, 1) desc
         ) as activity_grouping_intensity_rank
         ,case when {{ is_milestone_activity }} then activity_number||'th activity logged!' end as milestone_activity
-    from {{ ref('int_activities') }}
+    from {{ ref('dim_activities') }}
 )
 select
     cal.date_day

@@ -8,7 +8,7 @@ exposures:
       name: sam
 
     depends_on:
-      - ref('int_activities')
+      - ref('dim_activities')
       - ref('calendar')
 
 

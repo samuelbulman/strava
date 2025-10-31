@@ -3,7 +3,7 @@ select
 	,activity_name
 	,athlete_full_name
 	,case
-		when activity_type = 'WeightTraining' then (
+		when mapped_activity_type = 'WeightTraining' then (
 			case
 				when activity_name ~* 'chest' then 'Chest'
 				when activity_name ~* 'back' then 'Back'
@@ -17,7 +17,7 @@ select
 		when activity_name ~* 'golf' then 'Golf'
 		else activity_type
 	end as bro_split_bucket
-	,activity_type = 'WeightTraining' as is_weight_training_activity
+	,mapped_activity_type = 'WeightTraining' as is_weight_training_activity
 	,activity_timestamp_ct
 	,activity_date
 	,date_part('hour', activity_timestamp_ct)::int + ((100::float/60::float) * date_part('minute', activity_timestamp_ct) * .01) as activity_start_hour_scaled
@@ -26,6 +26,7 @@ select
 	,activity_distance
 	,activity_duration_seconds
 	,round(activity_duration_seconds / 60.00, 2) as activity_duration_minutes
+	,round((activity_duration_seconds / 60.00) / 24) as activity_duration_hours
 	,activity_elevation_low
 	,activity_elevation_high
 	,activity_avg_speed
@@ -36,13 +37,13 @@ select
 	,average_heartrate
     ,current_timestamp::timestamp as refreshed_at_ct
 	,case
-		when activity_type in ('Swim', 'Surfing') then 1.4
-		when activity_type = 'Run' then 1.3
-		when activity_type = 'WeightTraining' then 1.2
-		when activity_name ~* 'padel|pickleball|tennis' then 0.9
-		when activity_type = 'Yoga' then 0.8
-		when activity_type in ('Ride','Walk') then 0.7
-		when activity_type = 'Golf' then 0.4
+		when mapped_activity_type in ('Swim', 'Surfing') then 1.4
+		when mapped_activity_type = 'Run' then 1.3
+		when mapped_activity_type = 'WeightTraining' then 1.2
+		when mapped_activity_type ~* 'padel|pickleball|tennis' then 0.9
+		when mapped_activity_type = 'Yoga' then 0.8
+		when mapped_activity_type in ('Ride','Walk') then 0.7
+		when mapped_activity_type = 'Golf' then 0.4
 		else 1.0
 	end as activity_type_multiplier
 	-- scale individual workout components (capped to somewhat expected limits)
@@ -51,6 +52,6 @@ select
   	,least(round(activity_duration_seconds / 60.00, 2) / 90.0, 1.0) * 100 as scaled_duration
   	,least(calories_burned / 1000.0, 1.0) * 100 as scaled_total_calories
 	,row_number() over (order by activity_timestamp_ct) as activity_number
-from {{ ref('stg_strava__activities') }} activities
-inner join {{ ref('stg_strava__athletes') }} athletes
+from {{ ref('src_strava__activities') }} activities
+inner join {{ ref('src_strava__athletes') }} athletes
 	on activities.athlete_id = athletes.athlete_id

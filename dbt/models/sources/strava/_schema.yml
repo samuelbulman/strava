@@ -1,7 +1,7 @@
 version: 2
 
 models:
-  - name: stg_strava__activities
+  - name: src_strava__activities
     description: Initial strava activities dataset
     columns:
       - name: activity_id
@@ -9,52 +9,51 @@ models:
         tests:
           - unique
           - not_null
-      
       - name: activity_name
         description: Name of the activity as logged in strava
         tests:
           - not_null
-      
       - name: athlete_id
         description: ID of the athlete that logged the activity
         tests:
-          - not_null
-          - relationships:
-              to: ref('stg_strava__athletes')
-              field: athlete_id
-      
+            - not_null
+            - relationships:
+                arguments:
+                  to: ref('src_strava__athletes')
+                  field: athlete_id
       - name: activity_type
         description: Type of activity logged (run, walk, weight training, etc.)
         tests:
           - not_null
-      
+      - name: mapped_activity_type
+        description: |
+          Type of activity logged. This narrowly overrides activities that are
+          logged as "workouts", that are clearly weight training activities.
+        tests:
+          - not_null
       - name: activity_created_at
         description: Timestamp of when the activity began
         tests:
           - not_null
-      
       - name: activity_duration_seconds
         description: The length of the activity in seconds
         tests:
           - not_null
-      
       - name: calories_burned
         description: Number of calories burned during an activity
         tests:
           - not_null
-      
       - name: average_heartrate
         description: Average heartrate throughout the duration of an activity
         tests:
           - not_null
-      
       - name: max_heartrate
         description: The peak heartrate logged during the activity
         tests:
           - not_null
       
   
-  - name: stg_strava__athletes
+  - name: src_strava__athletes
     description: Initial strava athletes dataset
     columns:
       - name: athlete_id
@@ -62,7 +61,6 @@ models:
         tests:
           - unique
           - not_null
-      
       - name: athlete_full_name
         description: Full name of a given athlete
         tests:

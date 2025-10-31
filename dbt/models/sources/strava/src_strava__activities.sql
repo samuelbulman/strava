@@ -3,6 +3,12 @@ select
     ,name as activity_name
     ,athlete_id
     ,type as activity_type
+/*  weird strava source data issue where I'm accidentally logging "workout" acitivities
+    rather than "weight training" activities. I prefer they come through as the latter.  */
+    ,case
+        when type = 'Workout' and name ~* 'arm|chest|leg|back' then 'WeightTraining'
+        else type
+    end as mapped_activity_type
     ,replace(replace(created_at, 'T', ' '), 'Z', '')::timestamp as activity_timestamp_ct
 	,replace(replace(created_at, 'T', ' '), 'Z', '')::date as activity_date
     ,distance as activity_distance
