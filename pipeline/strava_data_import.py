@@ -13,12 +13,12 @@ import pandas as pd
 from dotenv import load_dotenv
 
 # Local imports
-from modules.schemas import StravaActivity
-from modules.postgres import Postgres
-from modules.send_email import send_email
+from utilities.schemas import StravaActivity
+from utilities.postgres import Postgres
+from utilities.common import send_email
 
-# admittedly haven't spent a ton of time with the logging lib and don't plan to
-# hence the detailed in-line documentation outlining what's going on at each step
+# admittedly haven't spent a ton of time with the logging lib and don't plan to go super deep
+# on it, hence the detailed in-line documentation outlining what's going on at each step
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -38,7 +38,8 @@ memory_handler = MemoryHandler(capacity=1000)
 memory_handler.setFormatter(log_formatter)
 logger.addHandler(memory_handler)
 
-logger.propagate = False # weird find - this just prevents logs from printing twice in console/terminal
+# weird find - this just prevents logs from printing twice in console/terminal
+logger.propagate = False
 
 
 def fetch_strava_activities(
@@ -106,7 +107,7 @@ def fetch_strava_activities(
                     new_activity_counter += 1
                     detailed_activity_response = strava_api_detailed_activities_response(access_token, activity_id=activity.get("id"))
                     activity_record["calories_burned"] = detailed_activity_response.get("calories")
-                    logger.debug("New Activity Detected.", extra={
+                    logger.info("New Activity Detected.", extra={
                         "new_activity_log_formatted": f"{'=' * 27}\n{new_activity_counter}. {activity.get('name')}\n{'=' * 27}\n - Workout Type:  {activity.get('type')}\n - Recorded At:  {activity.get('start_date_local')}\n - Calories Burned:  {detailed_activity_response.get('calories')}\n",
                     })
                 

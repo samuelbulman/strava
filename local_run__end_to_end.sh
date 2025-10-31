@@ -10,7 +10,7 @@ echo "  Executing Strava import ..."
 echo "------------------------------------------------------------------------------------------------------"
 
 # ingest data to postgres
-source venv/bin/activate && python3 strava_data_import.py
+cd pipeline && source venv/bin/activate && python3 strava_data_import.py
 deactivate
 
 echo "------------------------------------------------------------------------------------------------------"
@@ -18,7 +18,7 @@ echo "  Strava import finished. Executing dbt run ..."
 echo "------------------------------------------------------------------------------------------------------"
 
 # run lightweight data transformations
-cd dbt && source venv/bin/activate
+cd ../dbt && source venv/bin/activate
 dbt run
 deactivate
 
@@ -27,11 +27,11 @@ echo "  dbt run finished. Executing Strava export ..."
 echo "------------------------------------------------------------------------------------------------------"
 
 # export refreshed analytics data set to google sheets
-cd .. && source venv/bin/activate
+cd ../pipeline && source venv/bin/activate
 python3 strava_data_export.py
 
 end_time=$(date +%s)
 elapsed=$(( end_time - start_time ))
 echo "------------------------------------------------------------------------------------------------------"
-printf "  All tasks complete. Finished running in %d seconds.\n" "$elapsed"
+printf "  All tasks complete! Total runtime: %d seconds.\n" "$elapsed"
 echo "------------------------------------------------------------------------------------------------------"
