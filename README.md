@@ -37,13 +37,13 @@ target_worksheet_id=
 
 ```text
 .
-├── strava_export.py         # Extract data from Strava API
-├── strava_ingest.py         # Load flat file data into DuckDB/warehouse
 ├── dbt/                     # dbt transformation project
 │   ├── models/              # dbt models (intermediate & marts)
 │   ├── macros/              # dbt macros (e.g. intensity logic)
 │   └── dbt_project.yml      # dbt configuration
-├── requirements.txt
+|── pipeline/
+|   ├── strava_export.py      # Load data to Google Sheets
+|   ├── strava_ingest.py     # Load flat file data into database/warehouse
 └── local_run__end_to_end.sh
 ```
 
