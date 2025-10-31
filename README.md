@@ -97,5 +97,3 @@ This shell script runs the ingestion script, executes dbt transformations, and w
 ## Contact
 
 Made with 🏃 💦 🏋️ by [@samuelbulman](https://github.com/samuelbulman)
-
-Pull requests and ideas welcome!
