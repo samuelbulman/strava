@@ -18,6 +18,8 @@ This project leverages third party Python packages. To prime your local environm
 
 In order to leverage the Google Sheets functionality, you will need to create a personal [Google Project](https://cloud.google.com/free?utm_source=google&utm_medium=cpc&utm_campaign=na-US-all-en-dr-bkws-all-all-trial-b-dr-1710134&utm_content=text-ad-none-any-DEV_c-CRE_665665924741-ADGP_Hybrid+%7C+BKWS+-+MIX+%7C+Txt-Google+Cloud-Google+Cloud+Free-KWID_43700081235769755-aud-2232802565252:kwd-299377062137&utm_term=KW_google+cloud+platform+free-ST_google+cloud+platform+free&gad_source=1&gclid=CjwKCAiA5Ka9BhB5EiwA1ZVtvADHUMj870DMiev5WFHJ1uVytuOJjTn3z1zulGEOll36koGiGKRCLxoCRlkQAvD_BwE&gclsrc=aw.ds&hl=en) for free and [create a service account](https://cloud.google.com/iam/docs/service-accounts-create) associated with your project, that can read from & write to the [Google Sheets API](https://developers.google.com/sheets/api/guides/concepts).
 
+For email notifications, I simply generated an "app password" for one of my personal gmail accounts for simple authentication with python's built-in `smtplib`. More on gmail app passwords [here](https://support.google.com/mail/answer/185833?hl=en).
+
 If you do leverage a database or google sheets as a storage solution, you'll need to setup a .env file with your database connection details and/or google service account key details to authenticate to each service:
 
 ```text
