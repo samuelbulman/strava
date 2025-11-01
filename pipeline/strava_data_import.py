@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 # Local imports
 from utilities.schemas import StravaActivity
 from utilities.postgres import Postgres
-from utilities.common import send_email
+from utilities.email import send_email, strava_import_email
 
 # admittedly haven't spent a ton of time with the logging lib and don't plan to go super deep
 # on it, hence the detailed in-line documentation outlining what's going on at each step
@@ -435,23 +435,18 @@ if __name__ == "__main__":
         if record.levelname == "error":
             error_logs += (" - " + memory_handler.format(record) + "\n\n")
 
-    # if both postgres load functions run successfully (return True), construct an email subject and body outlining the successful job
     if _activities and _athletes:
         logger.info(f"IMPORT SUCCESS - Finished running in {run_time} seconds.")
-        email_subject = f"Successful Strava Import 💯 // {time.strftime('%Y-%m-%d')}"
-        email_body = f"""Strava import ran successfully at {time.strftime('%Y-%m-%d %H:%M:%S')}
-
-{processed_activity_summary}
-
-{new_activities_formatted}
-Total runtime: {run_time} seconds 🚀"""
+        email_subject, email_body = strava_import_email(
+            success=True,
+            processed_activity_summary=processed_activity_summary,
+            new_activities_formatted=new_activities_formatted,
+            total_run_time=run_time
+        )
     
     else:
         logger.error(f"IMPORT FAILED - Finished running in {run_time} seconds.")
-        email_subject = f"Failed Strava Import 😭 // {time.strftime('%Y-%m-%d')}"
-        email_body = f"""The following errors were captured:
-
-{error_logs}"""
+        email_subject, email_body = strava_import_email(success=False, error_logs=error_logs)
 
     send_email(
         sender_email=os.getenv("shmuel_bot_email"),
