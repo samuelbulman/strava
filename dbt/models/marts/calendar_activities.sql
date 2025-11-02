@@ -18,6 +18,7 @@ with activities as (
         ,activity_start_hour_scaled
         ,activity_end_timestamp_ct
         ,activity_end_hour
+        ,activity_end_hour_scaled - activity_start_hour_scaled as activity_duration_hours_scaled
         ,activity_distance
         ,activity_duration_seconds
         ,activity_duration_minutes

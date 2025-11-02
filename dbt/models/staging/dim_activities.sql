@@ -1,3 +1,5 @@
+{% set activity_end_timestamp_ct = "activity_timestamp_ct + (round(activity_duration_seconds / 60.00, 2) * (interval '1 minute'))" %}
+
 select
 	activity_id
 	,activity_name
@@ -21,8 +23,9 @@ select
 	,activity_timestamp_ct
 	,activity_date
 	,date_part('hour', activity_timestamp_ct)::int + ((100::float/60::float) * date_part('minute', activity_timestamp_ct) * .01) as activity_start_hour_scaled
-	,activity_timestamp_ct + (round(activity_duration_seconds / 60.00, 2) * (interval '1 minute')) as activity_end_timestamp_ct
+	,{{activity_end_timestamp_ct}} as activity_end_timestamp_ct
 	,date_part('hour', (activity_timestamp_ct + (round(activity_duration_seconds / 60.00, 2) * (interval '1 minute')))) as activity_end_hour
+	,date_part('hour', {{activity_end_timestamp_ct}})::int + ((100::float/60::float) * date_part('minute', {{activity_end_timestamp_ct}}) * .01) as activity_end_hour_scaled
 	,activity_distance
 	,activity_duration_seconds
 	,round(activity_duration_seconds / 60.00, 2) as activity_duration_minutes

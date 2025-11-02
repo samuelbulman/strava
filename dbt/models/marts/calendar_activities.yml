@@ -16,7 +16,7 @@ models:
   - name: calendar_activities
     description: |
       This table represents a calendar-aligned spine for Strava activity tracking. Its grain is at the day + activity level. 
-      If multiple activities occurred on a given day, there will be multiple records for that date—one per activity. Days with 
+      If multiple activities occurred on a given day, there will be multiple records for that date; one per activity. Days with 
       no activities will still appear as standalone rows with null activity fields, ensuring every date is represented regardless 
       of whether an activity was recorded on that day in support of time series analysis and visualization of gaps in user activity over time.
 
@@ -44,6 +44,22 @@ models:
 
       - name: activity_timestamp_ct
         description: Timestamp when the activity took place, in Central Time
+
+      - name: activity_start_hour_scaled
+        description: |
+          The hour of the day an activity was started in (in 24 hour clock time) with minutes scaled to 100
+          (i.e., 13.50 if an activity was started at 1:30 pm, or halfway through the hour).
+
+      - name: activity_end_hour_scaled
+        description: |
+          The hour of the day an activity was ended at (in 24 hour clock time) with minutes scaled to 100
+          (i.e., 13.50 if an activity was started at 1:30 pm, or halfway through the hour).
+
+      - name: activity_duration_hours_scaled
+        description: |
+          The difference between activity_end_hour_scaled minus activity_start_hour_scaled. Intended to visualize
+          activity duration in a Gantt chart over a consistent axis (activity_start_hour_scaled).
+ 
 
       - name: activity_distance
         description: Total distance covered during the activity, in meters
