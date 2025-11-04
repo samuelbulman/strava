@@ -5,6 +5,8 @@ start_time=$(date +%s)
 # force system to enter the directory this script located in
 cd "$(dirname "$0")"
 
+git checkout main && git pull
+
 echo "------------------------------------------------------------------------------------------------------"
 echo "  Executing Strava import ..."
 echo "------------------------------------------------------------------------------------------------------"
