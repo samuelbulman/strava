@@ -2,7 +2,6 @@ snapshots:
   - name: activities_snapshot
     relation: source('strava','activities')
     config:
-      schema: analytics_snapshots
       unique_key: id
       strategy: check
       check_cols: all

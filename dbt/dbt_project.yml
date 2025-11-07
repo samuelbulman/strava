@@ -45,3 +45,6 @@ models:
     sources:
       schema: sources
       materialized: view
+
+snapshots:
+  +schema: snapshots
