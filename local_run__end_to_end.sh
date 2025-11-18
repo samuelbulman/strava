@@ -22,6 +22,7 @@ echo "--------------------------------------------------------------------------
 # run lightweight data transformations
 cd ../dbt && source venv/bin/activate
 dbt run
+dbt snapshot
 deactivate
 
 echo "------------------------------------------------------------------------------------------------------"
