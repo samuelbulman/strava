@@ -7,6 +7,7 @@ select
 	,case
 		when mapped_activity_type = 'WeightTraining' then (
 			case
+				when activity_name ~* ' and ' then 'Multiple muscle groups'
 				when activity_name ~* 'chest' then 'Chest'
 				when activity_name ~* 'back' then 'Back'
 				when activity_name ~* 'leg' then 'Legs'
