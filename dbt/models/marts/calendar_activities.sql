@@ -12,7 +12,8 @@ with activities as (
         ,activity_name
         ,athlete_full_name
         ,bro_split_bucket
-        ,is_weight_training_activity
+    /* sadly can't rely on mapped_activity_type = 'WeightTraining' for all weight training activities */
+        ,bro_split_bucket in ('Multiple muscle groups','Chest','Back','Legs','Arms','Shoulders','Body Weight') as is_weight_training_activity
         ,activity_timestamp_ct
         ,activity_date
         ,activity_start_hour_scaled

@@ -5,7 +5,7 @@ select
 	,activity_name
 	,athlete_full_name
 	,case
-		when mapped_activity_type = 'WeightTraining' then (
+		when mapped_activity_type ~* 'weighttraining|workout' then (
 			case
 				when activity_name ~* ' and ' then 'Multiple muscle groups'
 				when activity_name ~* 'chest' then 'Chest'
@@ -20,7 +20,6 @@ select
 		when activity_name ~* 'golf' then 'Golf'
 		else activity_type
 	end as bro_split_bucket
-	,mapped_activity_type = 'WeightTraining' as is_weight_training_activity
 	,activity_timestamp_ct
 	,activity_date
 	,date_part('hour', activity_timestamp_ct)::int + ((100::float/60::float) * date_part('minute', activity_timestamp_ct) * .01) as activity_start_hour_scaled
