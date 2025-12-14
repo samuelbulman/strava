@@ -14,10 +14,10 @@ select
 				when activity_name ~* 'arm' then 'Arms'
 				when activity_name ~* 'shoulder' then 'Shoulders'
 				when activity_name ~* 'push up|pull up' then 'Body Weight'
+				when activity_name ~* 'padel|pickleball|tennis' then 'Racket Sports'
+				when activity_name ~* 'golf' then 'Golf'
 			end
 		)
-		when activity_name ~* 'padel|pickleball|tennis' then 'Racket Sports'
-		when activity_name ~* 'golf' then 'Golf'
 		else activity_type
 	end as bro_split_bucket
 	,activity_timestamp_ct
