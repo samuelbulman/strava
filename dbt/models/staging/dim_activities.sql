@@ -15,7 +15,7 @@ select
 				when activity_name ~* 'shoulder' then 'Shoulders'
 				when activity_name ~* 'push up|pull up' then 'Body Weight'
 				when activity_name ~* 'padel|pickleball|tennis' then 'Racket Sports'
-				when activity_name ~* 'golf' then 'Golf'
+				when activity_name ~* 'golf|driving range' then 'Golf'
 			end
 		)
 		else activity_type
