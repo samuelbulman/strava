@@ -60,10 +60,6 @@ def fetch_strava_activities(
             activities_data = strava_api_activities_response(access_token)
             activities = []
 
-            for activity in activities_data:
-                if activity.get("id") in exclusion_activities:
-                    continue
-
             existing_activities = fetch_existing_activity_ids()
 
             # TODO: break with "nothing to do" if no new records are available to load
@@ -204,11 +200,6 @@ def fetch_existing_activity_ids() -> dict:
 
     with Postgres() as psql:
         if psql.table_exists(schema="strava", table="activities"):
-            existing_activity_records = {
-                "id": [],
-                "calories": []
-            }
-
             _, existing_activities = psql.query_postgres(sql_query="select distinct id, calories_burned from strava.activities;")
 
             for row in existing_activities:
@@ -235,12 +226,10 @@ def fetch_strava_athletes(
             headers={"Authorization": f"Bearer {access_token}"}
         )
 
-        # if our request is successful, parse the response
-        # and stage activity records for later reference
         if response.status_code == 200:
             athlete = response.json()
             user_dict = {
-                "id": [athlete.get("id")],  #  this will need to be refactored when multiple athletes data is pulled in single run
+                "id": [athlete.get("id")],
                 "first_name": [athlete.get("firstname")],
                 "last_name": [athlete.get("lastname")]
             }
