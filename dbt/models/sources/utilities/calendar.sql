@@ -4,7 +4,7 @@ with date_spine as (
         dbt_utils.date_spine(
             datepart="day",
             start_date="'2022-01-01'::date",
-            end_date="(date_trunc('year', current_date) + interval '12 months' - interval '1 day')::date"
+            end_date="(date_trunc('year', current_date) + interval '12 months')::date"
         )
     }}
 )
