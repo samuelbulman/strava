@@ -9,9 +9,9 @@ import logging
 from logging.handlers import MemoryHandler
 
 # Local imports
-from utilities.postgres import Postgres
-from utilities.google_sheets import GoogleSheets
-from utilities.common import read_sql
+from ..utilities.postgres import Postgres
+from ..utilities.google_sheets import GoogleSheets
+from ..utilities.common import read_sql
 
 # admittedly haven't spent a ton of time with the logging lib and don't plan to go super deep
 # on it, hence the detailed in-line documentation outlining what's going on at each step
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     logger.info("EXPORT INITIATED")
 
     file_name = "calendar_activities.sql"
-    sql_query = read_sql(f"{os.getcwd()}/sql/{file_name}")
+    sql_query = read_sql(f"{os.getcwd()}/pipeline/export/sql/{file_name}")
 
     postgres_to_google_sheets(
         sql_query=sql_query,
