@@ -39,15 +39,20 @@ target_worksheet_id=
 
 ```text
 .
-├── dbt/                     # dbt transformation project
-│   ├── models/              # dbt models (intermediate & marts)
-│   ├── macros/              # dbt macros (e.g. intensity logic)
-│   └── dbt_project.yml      # dbt configuration
+├── dbt/
+│   ├── models/
+│   ├── macros/
+│   ├── snapshots/
+│   └── dbt_project.yml
 ├── pipeline/
-│   ├── utilities/           # Internal python packages
-│   ├── strava_export.py     # Load data to Google Sheets
-│   └── strava_ingest.py     # Load flat file data into database/warehouse
-└── local_run__end_to_end.sh
+│   ├── export/
+│   │   ├── strava_export.py
+│   ├── ingest/
+│   │   ├── strava_activities.py
+│   ├── utilities/
+│   ├── strava_export.py
+│   └── strava_ingest.py
+└── full_run.sh
 ```
 
 ---
