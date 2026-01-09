@@ -91,7 +91,7 @@ If you haven’t already:
 
 ### End-to-End Execution
 
-If you've successfully set up a database instance, connected to the Strava API, and established a working Google Sheets connection, you can run this data pipeline end-to-end by running the `local_run__end_to_end.sh` shell script available in the repo's root directory:
+If you've successfully set up a database instance, connected to the Strava API, and established a working Google Sheets connection, you can run this data pipeline end-to-end by running the `full_run.sh` shell script available in the repo's root directory:
 
 ```bash
 ./full_run.sh
