@@ -5,7 +5,7 @@ select
 	,activity_name
 	,athlete_full_name
 	,case
-		when mapped_activity_type ~* 'weighttraining|workout' then (
+		when mapped_activity_type ~* 'WeightTraining|Workout' then (
 			case
 				when activity_name ~* ' and ' then 'Multiple muscle groups'
 				when activity_name ~* 'chest' then 'Chest'
@@ -41,8 +41,8 @@ select
     ,current_timestamp::timestamp as refreshed_at_ct
 	,case
 		when mapped_activity_type in ('Swim', 'Surfing') then 1.4
-		when mapped_activity_type = 'Run' then 1.3
 		when mapped_activity_type = 'WeightTraining' then 1.2
+		when mapped_activity_type = 'Run' then 1.1
 		when mapped_activity_type ~* 'padel|pickleball|tennis' then 0.9
 		when mapped_activity_type = 'Yoga' then 0.8
 		when mapped_activity_type in ('Ride','Walk') then 0.7
@@ -54,7 +54,7 @@ select
   	,least(greatest((max_heartrate - 100) / 100.0, 0), 1.0) * 100 as scaled_max_hr
   	,least(round(activity_duration_seconds / 60.00, 2) / 90.0, 1.0) * 100 as scaled_duration
   	,least(calories_burned / 1000.0, 1.0) * 100 as scaled_total_calories
-	,row_number() over (order by activity_timestamp_ct) as activity_number
+	,row_number() over (partition by athletes.athlete_id order by activities.activity_timestamp_ct) as activity_number
 from {{ ref('src_strava__activities') }} activities
 inner join {{ ref('src_strava__athletes') }} athletes
 	on activities.athlete_id = athletes.athlete_id

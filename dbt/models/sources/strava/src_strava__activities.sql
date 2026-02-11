@@ -6,7 +6,7 @@ select
 /*  weird strava source data issue where I'm accidentally logging "workout" acitivities
     rather than "weight training" activities. I prefer they come through as the latter.  */
     ,case
-        when type = 'Workout' and name ~* 'arm|chest|leg|back' then 'WeightTraining'
+        when type = 'Workout' and name ~* 'arm|chest|leg|back|shoulder|push up|pull up' then 'WeightTraining'
         else type
     end as mapped_activity_type
     ,replace(replace(created_at, 'T', ' '), 'Z', '')::timestamp as activity_timestamp_ct
